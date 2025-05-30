@@ -287,10 +287,12 @@ int sys_read(int fd, void *buffer, unsigned size){
 	struct thread *cur = thread_current ();
 
 	if(fd == 0){
+		lock_acquire(&file_lock);
 		for (int i = 0; i < (int) size; i++){
 			char *buf = (char *) buffer;
 			buf[i] = input_getc();
 		}
+		lock_release(&file_lock);
 		return size;
 	}
 
