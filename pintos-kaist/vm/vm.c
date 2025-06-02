@@ -4,7 +4,8 @@
 #include "threads/malloc.h"
 #include "vm/vm.h"
 #include "vm/inspect.h"
-
+#include "threads/mmu.h"
+#include "threads/vaddr.h"
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
 // 각 서브시스템의 초기화 코드를 호출하여 가상 메모리 서브시스템을 초기화합니다.
@@ -112,7 +113,7 @@ spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 	struct page temp_page;
 	temp_page.va = pg_round_down(va);
 	
-	struct hash_elem *e = hash_find(&spt->hash_spt, &temp_page.hash_elem);
+	struct hash_elem *e = hash_find(&spt->spt_hash, &temp_page.hash_elem);
 	if(e != NULL){
 		return hash_entry(e, struct page, hash_elem);
 	}else{
@@ -171,7 +172,13 @@ vm_evict_frame (void) {
 // 항상 유효한 주소를 반환합니다. 즉, 사용자 메모리 풀이 가득 차도 프레임을 교체하여 메모리를 확보합니다.
 static struct frame *
 vm_get_frame (void) {
-	struct frame *frame = NULL;
+	struct frame *frame = malloc(sizeof frame);
+	void *new_kva = palloc_get_page(PAL_USER);
+
+	ASSERT (new_kva != NULL);
+
+	frame->page = NULL;
+	frame->kva = new_kva;
 	/* TODO: Fill this function. */
 	// TODO: 이 함수를 구현하세요.
 
@@ -218,9 +225,12 @@ vm_dealloc_page (struct page *page) {
 // 주어진 VA에 해당하는 페이지를 점유(claim)합니다.
 bool
 vm_claim_page (void *va UNUSED) {
-	struct page *page = NULL;
-	/* TODO: Fill this function */
-	// TODO: 이 함수를 구현하세요.
+    va = pg_round_down(va);
+
+    struct page *page = spt_find_page(&thread_current()->spt, va);
+    if (page == NULL) {
+        return false; 
+    }
 	return vm_do_claim_page (page);
 }
 
@@ -229,8 +239,40 @@ vm_claim_page (void *va UNUSED) {
 static bool
 vm_do_claim_page (struct page *page) {
 	struct frame *frame = vm_get_frame ();
-
+    page->frame = frame;
 	/* Set links */
+    
+
+	// return page->frame == NULL ? true : false;
+
+	// bool writable;
+
+	// // va -> page
+	// switch (page_get_type(page))
+	// {
+	// case VM_ANON: 
+	// 	writable = true;
+	// 	break;
+	// case VM_FILE:
+	// 	writable = false;
+	// 	break;
+	// default:
+	// 	writable = true;
+	// };
+
+   install_page (page->va, frame->kva, writable); 
+   
+   pml4_walk(thread_current()->pml4, page->va,1);
+   
+    
+
+   if(pml4_get_page (thread_current()->pml4, page->va) == NULL){
+	 pml4_set_page (thread_current()->pml4, page->va, page->frame->kva, writable)
+   }
+
+    /* (pml4_get_page (t->pml4, upage) == NULL
+			&& pml4_set_page (t->pml4, upage, kpage, writable));*/
+
 	frame->page = page;
 	page->frame = frame;
 

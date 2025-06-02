@@ -45,11 +45,12 @@ struct page {
 	struct frame *frame;   /* Back reference for frame */
 	struct hash_elem hash_elem; /*spt의 hash를 위한 hash_elem*/
 	
-
+    //쓰기 읽기 멤버가 필요한가? 
+	
 	/* 여기에 구현 내용 추가 가능 */
 
     /* 실제로 해당 페이지를 사용하는 프로세스에 대한 멤버도 필요할 것 같다. */
-    struct hash_elem hash_elem;
+    //bool writable;
 	/* 타입별 데이터를 union으로 묶음
 	 * 각 함수는 현재 타입을 자동으로 감지함 */
 	union {
