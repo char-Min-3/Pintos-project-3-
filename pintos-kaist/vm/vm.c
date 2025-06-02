@@ -253,12 +253,13 @@ page_less (const struct hash_elem *a_, const struct hash_elem *b_, void *aux UNU
 	return a->va < b->va;
 }
 
+
 /* Initialize new supplemental page table */
 // 새로운 보조 페이지 테이블을 초기화합니다.
 void
 supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
-	// 해시 테이블 생성
 	hash_init(spt->spt_hash, page_hash, page_less, NULL);
+	lock_init(spt->spt_lock);
 }
 
 /* Copy supplemental page table from src to dst */
