@@ -41,8 +41,10 @@ struct thread;
  * 이 구조체의 사전 정의된 멤버는 제거/수정 금지 */
 struct page {
 	const struct page_operations *operations;
-	void *va;              /* 사용자 공간 기준의 주소 */
-	struct frame *frame;   /* 프레임에 대한 역참조 */
+	void *va;              /* Address in terms of user space */
+	struct frame *frame;   /* Back reference for frame */
+	struct hash_elem hash_elem; /*spt의 hash를 위한 hash_elem*/
+	
 
 	/* 여기에 구현 내용 추가 가능 */
 
@@ -85,7 +87,8 @@ struct page_operations {
 /* 현재 프로세스의 메모리 공간을 나타내는 구조체
  * 이 구조체는 자유롭게 설계 가능 */
 struct supplemental_page_table {
-	struct hash hash_spt ;
+	struct hash *spt_hash;		/*spt hash 테이블 */
+	struct lock *spt_lock;		/*spt lock (임계 구역 관리)*/
 };
 
 #include "threads/thread.h"
@@ -116,5 +119,9 @@ void vm_dealloc_page (struct page *page);
 bool vm_claim_page (void *va);
 /* 페이지의 타입 반환 */
 enum vm_type page_get_type (struct page *page);
+
+/*hash*/
+unsigned page_hash (const struct hash_elem *p_, void *aux UNUSED);
+bool page_less (const struct hash_elem *a_, const struct hash_elem *b_, void *aux UNUSED);
 
 #endif  /* VM_VM_H */
