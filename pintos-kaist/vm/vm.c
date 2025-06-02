@@ -125,16 +125,19 @@ spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 bool
 spt_insert_page (struct supplemental_page_table *spt UNUSED,
 		struct page *page UNUSED) {
+
+	/* TODO: Fill this function. */
+	// TODO: 이 함수를 구현하세요.
+
 	int succ = false;
 
-	struct hash_elem *elem = hash_insert(&spt->hash_spt,&page->hash_elem);
+	lock_acquire(&spt->spt_lock);
+	struct hash_elem *elem = hash_insert(&spt->spt_hash, &page->hash_elem);
+	lock_release(&spt->spt_lock);
 
 	if (elem == NULL)
 		succ = true;
 	
-
-	/* TODO: Fill this function. */
-	// TODO: 이 함수를 구현하세요.
 	return succ;
 }
 
