@@ -34,6 +34,14 @@
         "process.h": "c",
         "filesys.h": "c",
         "init.h": "c",
-        "mmu.h": "c"
+        "mmu.h": "c",
+        "memory_resource": "c",
+        "vm.h": "c",
+        "anon.h": "c",
+        "uninit.h": "c",
+        "page_cache.h": "c",
+        "vector": "c",
+        "memory": "c",
+        "string_view": "c"
     }
 }
