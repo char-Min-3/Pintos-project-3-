@@ -106,15 +106,15 @@ err:
 // VA에 해당하는 페이지를 spt에서 찾아 반환합니다. 실패 시 NULL을 반환합니다.
 struct page *
 spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
+
+	if (spt == NULL || va == NULL) return NULL;
+
 	struct page temp_page;
 	temp_page.va = pg_round_down(va);
 	
 	struct hash_elem *e = hash_find(&spt->spt_hash, &temp_page.hash_elem);
-	if(e != NULL){
-		return hash_entry(e, struct page, hash_elem);
-	}else{
-		return NULL;
-	}
+
+	return e ? hash_entry(e, struct page, hash_elem) : NULL;
 }
 
 /* Insert PAGE into spt with validation. */
@@ -292,8 +292,8 @@ page_less (const struct hash_elem *a_, const struct hash_elem *b_, void *aux UNU
 // 새로운 보조 페이지 테이블을 초기화합니다.
 void
 supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
-	spt->spt_hash = malloc(sizeof spt->spt_hash);
-	spt->spt_lock = malloc(sizeof spt->spt_lock);
+	spt->spt_hash = malloc(sizeof (struct hash));
+	spt->spt_lock = malloc(sizeof (struct lock));
 	hash_init(spt->spt_hash, page_hash, page_less, NULL);
 	lock_init(spt->spt_lock);
 }
