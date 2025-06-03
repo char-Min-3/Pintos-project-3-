@@ -2,8 +2,12 @@
 // vm.c: 가상 메모리 객체를 위한 일반적인 인터페이스
 
 #include "threads/malloc.h"
+#include "threads/palloc.h"
+#include "threads/thread.h" 
+#include "threads/mmu.h"
 #include "vm/vm.h"
 #include "vm/inspect.h"
+
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
@@ -104,7 +108,7 @@ spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 	struct page temp_page;
 	temp_page.va = pg_round_down(va);
 	
-	struct hash_elem *e = hash_find(&spt->hash_spt, &temp_page.hash_elem);
+	struct hash_elem *e = hash_find(&spt->spt_hash, &temp_page.hash_elem);
 	if(e != NULL){
 		return hash_entry(e, struct page, hash_elem);
 	}else{
@@ -252,21 +256,8 @@ vm_do_claim_page (struct page *page) {
     return false;
 	frame->page = page;
 	page->frame = frame;
-	bool writable;
+	bool writable = page -> writable;
 	
-
-	switch (page_get_type(page))
-	{
-	case VM_ANON: 
-		writable = true;
-		break;
-	case VM_FILE:
-		writable = false;
-		break;
-	default:
-		writable = true;
-	};
-
 
     if (pml4_get_page(thread_current()->pml4, page->va) == NULL){
     	bool check = pml4_set_page(thread_current()->pml4, page->va, frame->kva, writable);
