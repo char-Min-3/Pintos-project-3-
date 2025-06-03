@@ -37,7 +37,7 @@
 #define PTE_ADDR_MASK  0xffffffffffffff000UL /* Address bits. */
 #define PTE_AVL   0x00000e00             /* Bits available for OS use. */
 #define PTE_P 0x1                        /* 1=present, 0=not present. */
-#define PTE_W 0x2                        /* 1=read/write, 0=read-only. */
+#define PTE_W 0x2                       // 쓰기 권한 (1=읽기/쓰기 가능, 0=읽기 전용)
 #define PTE_U 0x4                        /* 1=user/kernel, 0=kernel only. */
 #define PTE_A 0x20                       /* 1=accessed, 0=not acccessed. */
 #define PTE_D 0x40                       /* 1=dirty, 0=not dirty (PTEs only). */
