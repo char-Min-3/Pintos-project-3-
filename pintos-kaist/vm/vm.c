@@ -292,6 +292,8 @@ page_less (const struct hash_elem *a_, const struct hash_elem *b_, void *aux UNU
 // 새로운 보조 페이지 테이블을 초기화합니다.
 void
 supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
+	spt->spt_hash = malloc(sizeof spt->spt_hash);
+	spt->spt_lock = malloc(sizeof spt->spt_lock);
 	hash_init(spt->spt_hash, page_hash, page_less, NULL);
 	lock_init(spt->spt_lock);
 }

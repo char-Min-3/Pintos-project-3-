@@ -786,7 +786,7 @@ lazy_load_segment (struct page *page, void *aux) {
 	{
 			free(info);
 			return false;
-		}
+	}
 	
 	// 채우고 남은 공간을 0으로 채운다. 마지막 페이지가 아니면 채울 필요 없음.
 	memset (kpage + info->page_read, 0, info->page_zero);
