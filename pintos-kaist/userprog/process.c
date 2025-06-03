@@ -784,8 +784,8 @@ lazy_load_segment (struct page *page, void *aux) {
 
 	if (file_read_at (info->file, kpage, info->page_read,info->offset) != (int) info->page_read) 
 	{
-			free(info);
-			return false;
+		free(info);
+		return false;
 	}
 	
 	// 채우고 남은 공간을 0으로 채운다. 마지막 페이지가 아니면 채울 필요 없음.
@@ -842,7 +842,6 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 					writable, lazy_load_segment, aux))
 			return false;
 
-	
 		/* Advance. */
 		read_bytes -= page_read_bytes;
 		zero_bytes -= page_zero_bytes;
