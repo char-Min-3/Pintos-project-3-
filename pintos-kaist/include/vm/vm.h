@@ -44,6 +44,7 @@ struct page {
 	void *va;              /* Address in terms of user space */
 	struct frame *frame;   /* Back reference for frame */
 	struct hash_elem hash_elem; /*spt의 hash를 위한 hash_elem*/
+	bool writable;
 	
     //쓰기 읽기 멤버가 필요한가? 
 	
