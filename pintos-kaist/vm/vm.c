@@ -112,7 +112,7 @@ spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 	struct page temp_page;
 	temp_page.va = pg_round_down(va);
 	
-	struct hash_elem *e = hash_find(&spt->hash_spt, &temp_page.hash_elem);
+	struct hash_elem *e = hash_find(&spt->spt_hash, &temp_page.hash_elem);
 	if(e != NULL){
 		return hash_entry(e, struct page, hash_elem);
 	}else{
