@@ -52,7 +52,7 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		vm_initializer *init, void *aux) {
 
 	ASSERT (VM_TYPE(type) != VM_UNINIT)
-\
+
 
 	struct supplemental_page_table *spt = &thread_current ()->spt;
 
@@ -66,6 +66,7 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		// struct page *_pages = palloc_get_page(PAL_USER);
 
 		bool (*initializer) (struct page *page, enum vm_type type, void *kva);
+		
 		switch (type) {  // VM_TYPE_MASK로 타입 추출
   		case VM_ANON:
 		    
@@ -291,6 +292,8 @@ page_less (const struct hash_elem *a_, const struct hash_elem *b_, void *aux UNU
 // 새로운 보조 페이지 테이블을 초기화합니다.
 void
 supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
+	spt->spt_hash = malloc(sizeof spt->spt_hash);
+	spt->spt_lock = malloc(sizeof spt->spt_lock);
 	hash_init(spt->spt_hash, page_hash, page_less, NULL);
 	lock_init(spt->spt_lock);
 }
