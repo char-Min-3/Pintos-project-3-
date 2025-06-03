@@ -779,6 +779,20 @@ lazy_load_segment (struct page *page, void *aux) {
 	/* TODO: Load the segment from the file */
 	/* TODO: This called when the first page fault occurs on address VA. */
 	/* TODO: VA is available when calling this function. */
+	struct file_info *info = (struct file_info *)aux;
+	uint8_t *kpage = page->frame->kva;
+
+	if (file_read_at (info->file, kpage, info->page_read,info->offset) != (int) info->page_read) 
+	{
+			free(info);
+			return false;
+		}
+	
+	// 채우고 남은 공간을 0으로 채운다. 마지막 페이지가 아니면 채울 필요 없음.
+	memset (kpage + info->page_read, 0, info->page_zero);
+	free(info);
+	return true;
+
 }
 
 /* Loads a segment starting at offset OFS in FILE at address
@@ -795,12 +809,20 @@ lazy_load_segment (struct page *page, void *aux) {
  *
  * Return true if successful, false if a memory allocation error
  * or disk read error occurs. */
+/**
+ * read_bytes : 파일에서 읽어야할 크기
+ * zero_bytes : 페이지 크기로 나누기 위해 빈 공간
+*/
 static bool
 load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		uint32_t read_bytes, uint32_t zero_bytes, bool writable) {
 	ASSERT ((read_bytes + zero_bytes) % PGSIZE == 0);
 	ASSERT (pg_ofs (upage) == 0);
 	ASSERT (ofs % PGSIZE == 0);
+	// read_bytes : 마지막 페이지 읽어야할 크기 / zero_bytes: 페이지 - read_bytes
+	// 페이지 단위로 나눠서 반복문 돌림.
+	// page_read_bytes : 페이지 크기 만큼 읽는다. * 마지막 페이지일 때? -> read_bytes
+	// page_zero_bytes : 0 * 마지막 페이지일 때? -> zero_bytes
 
 	while (read_bytes > 0 || zero_bytes > 0) {
 		/* Do calculate how to fill this page.
@@ -809,16 +831,23 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
 		size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
-		/* TODO:Set up aux to pass information to the lazy_load_segment. */
-		void *aux = NULL;
+		struct file_info *aux = malloc(sizeof(struct file_info));
+		if (aux == NULL) return false;	
+		aux->file = file;
+		aux->page_read = page_read_bytes;
+		aux->page_zero = page_zero_bytes;
+		aux->offset = ofs;
+
 		if (!vm_alloc_page_with_initializer (VM_ANON, upage,
 					writable, lazy_load_segment, aux))
 			return false;
 
+	
 		/* Advance. */
 		read_bytes -= page_read_bytes;
 		zero_bytes -= page_zero_bytes;
 		upage += PGSIZE;
+		ofs += page_read_bytes;
 	}
 	return true;
 }
