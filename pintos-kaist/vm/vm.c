@@ -48,7 +48,7 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		vm_initializer *init, void *aux) {
 
 	ASSERT (VM_TYPE(type) != VM_UNINIT)
-\
+
 
 	struct supplemental_page_table *spt = &thread_current ()->spt;
 
@@ -62,6 +62,7 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		// struct page *_pages = palloc_get_page(PAL_USER);
 
 		bool (*initializer) (struct page *page, enum vm_type type, void *kva);
+		
 		switch (type) {  // VM_TYPE_MASK로 타입 추출
   		case VM_ANON:
 		    
