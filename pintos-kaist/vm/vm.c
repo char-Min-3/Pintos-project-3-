@@ -4,9 +4,7 @@
 #include "threads/malloc.h"
 #include "vm/vm.h"
 #include "vm/inspect.h"
-#include "threads/mmu.h"
-#include "threads/vaddr.h"
-#include "vm/uninit.h"
+
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
 // 각 서브시스템의 초기화 코드를 호출하여 가상 메모리 서브시스템을 초기화합니다.
@@ -106,7 +104,7 @@ spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 	struct page temp_page;
 	temp_page.va = pg_round_down(va);
 	
-	struct hash_elem *e = hash_find(spt->spt_hash, &temp_page.hash_elem);
+	struct hash_elem *e = hash_find(&spt->hash_spt, &temp_page.hash_elem);
 	if(e != NULL){
 		return hash_entry(e, struct page, hash_elem);
 	}else{
@@ -203,10 +201,23 @@ bool
 vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 		bool user UNUSED, bool write UNUSED, bool not_present UNUSED) {
 	struct supplemental_page_table *spt UNUSED = &thread_current ()->spt;
-	struct page *page = NULL;
+	struct page *page = spt_find_page(spt,addr);
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
 	// TODO: 페이지 폴트를 검증하고, 처리 코드를 작성하세요.
+	/* 페이지가 NULL */
+	if (page == NULL){
+		return false;
+	}
+	/* write 접근했는데, 페이지가 writable 하지 않을 경우 */
+	if (write && !page->writable){
+		return false;
+	}
+	/* 권한 */
+	if (!not_present){
+		return false;
+	}
+
 	return vm_do_claim_page (page);
 }
 
@@ -250,12 +261,12 @@ vm_do_claim_page (struct page *page) {
 		writable = true;
 		break;
 	case VM_FILE:
-	    
 		writable = false;
 		break;
 	default:
 		writable = true;
 	};
+
 
     if (pml4_get_page(thread_current()->pml4, page->va) == NULL){
     	bool check = pml4_set_page(thread_current()->pml4, page->va, frame->kva, writable);
@@ -268,7 +279,6 @@ vm_do_claim_page (struct page *page) {
 
     return swap_in(page, frame->kva);
 }
-
 /* Returns a hash value for page p. */
 unsigned
 page_hash (const struct hash_elem *p_, void *aux UNUSED){
