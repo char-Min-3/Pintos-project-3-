@@ -290,47 +290,14 @@ process_exec (void *f_name) {
 
 
 	push_by_stack(&_if, argv, argc);
-	palloc_free_page (fn_copy);
+	// palloc_free_page (fn_copy);
 
 	/* Start switched process. */
 	do_iret (&_if);
 	NOT_REACHED ();
 }
 
-static void
-push_by_stack(struct intr_frame *if_, char *argv[], int argc){
-    char *arg_addr[argc];
 
-    // argv[i]의 문자열 내용을 유저 스택에 복사
-    for (int i = argc - 1; i >= 0 ; i--){
-        size_t len = strlen(argv[i]) + 1;
-        if_->rsp -= len;
-        memcpy((void *)if_->rsp, argv[i], len);
-        arg_addr[i] = (char *)if_->rsp;  
-    }
-
-    // 8바이트 정렬
-    while (if_->rsp % 8 != 0)
-        if_->rsp--;
-
-    // NULL sentinel
-    if_->rsp -= 8;
-    memset((void *)if_->rsp, 0, 8);
-
-    // argv[i] 주소들 복사 (역순)
-    for (int i = argc - 1; i >= 0; i--) {
-        if_->rsp -= 8;
-        memcpy((void *)if_->rsp, &arg_addr[i], 8);
-    }
-
-    // rsi = argv, rdi = argc
-    if_->R.rsi = (uint64_t)if_->rsp;
-    if_->R.rdi = argc;
-
-    // fake return address
-    if_->rsp -= 8;
-    memset((void *)if_->rsp, 0, 8);
-}
 
 
 
@@ -378,6 +345,7 @@ process_wait (tid_t child_tid UNUSED) {
 
 
 /* Exit the process. This function is called by thread_exit (). */
+void 
 process_exit (void) {
 	/* TODO: Your code goes here.
 	 * TODO: Implement process termination message (see
@@ -862,6 +830,48 @@ setup_stack (struct intr_frame *if_) {
 	 * TODO: You should mark the page is stack. */
 	/* TODO: Your code goes here */
 
+	if(vm_alloc_page_with_initializer(VM_ANON | VM_MARKER_0, stack_bottom, true, NULL, NULL)) {
+		success = vm_claim_page(stack_bottom);
+		if (success)
+			if_->rsp = USER_STACK;
+	}
+
 	return success;
 }
+
 #endif /* VM */
+
+static void
+push_by_stack(struct intr_frame *if_, char *argv[], int argc){
+    char *arg_addr[argc];
+
+    // argv[i]의 문자열 내용을 유저 스택에 복사
+    for (int i = argc - 1; i >= 0 ; i--){
+        size_t len = strlen(argv[i]) + 1;
+        if_->rsp -= len;
+        memcpy((void *)if_->rsp, argv[i], len);
+        arg_addr[i] = (char *)if_->rsp;  
+    }
+
+    // 8바이트 정렬
+    while (if_->rsp % 8 != 0)
+        if_->rsp--;
+
+    // NULL sentinel
+    if_->rsp -= 8;
+    memset((void *)if_->rsp, 0, 8);
+
+    // argv[i] 주소들 복사 (역순)
+    for (int i = argc - 1; i >= 0; i--) {
+        if_->rsp -= 8;
+        memcpy((void *)if_->rsp, &arg_addr[i], 8);
+    }
+
+    // rsi = argv, rdi = argc
+    if_->R.rsi = (uint64_t)if_->rsp;
+    if_->R.rdi = argc;
+
+    // fake return address
+    if_->rsp -= 8;
+    memset((void *)if_->rsp, 0, 8);
+}
