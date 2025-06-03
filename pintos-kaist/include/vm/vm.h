@@ -116,6 +116,7 @@ bool vm_alloc_page_with_initializer (enum vm_type type, void *upage,
 /* 페이지 해제 */
 void vm_dealloc_page (struct page *page);
 /* 주소에 해당하는 페이지 점유 */
+static bool vm_do_claim_page(struct page *page);
 bool vm_claim_page (void *va);
 /* 페이지의 타입 반환 */
 enum vm_type page_get_type (struct page *page);
