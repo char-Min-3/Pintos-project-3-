@@ -45,11 +45,12 @@ struct page {
 	struct frame *frame;   /* Back reference for frame */
 	struct hash_elem hash_elem; /*spt의 hash를 위한 hash_elem*/
 	
-
+    //쓰기 읽기 멤버가 필요한가? 
+	
 	/* 여기에 구현 내용 추가 가능 */
 
     /* 실제로 해당 페이지를 사용하는 프로세스에 대한 멤버도 필요할 것 같다. */
-
+    //bool writable;
 	/* 타입별 데이터를 union으로 묶음
 	 * 각 함수는 현재 타입을 자동으로 감지함 */
 	union {
@@ -115,6 +116,7 @@ bool vm_alloc_page_with_initializer (enum vm_type type, void *upage,
 /* 페이지 해제 */
 void vm_dealloc_page (struct page *page);
 /* 주소에 해당하는 페이지 점유 */
+static bool vm_do_claim_page(struct page *page);
 bool vm_claim_page (void *va);
 /* 페이지의 타입 반환 */
 enum vm_type page_get_type (struct page *page);
