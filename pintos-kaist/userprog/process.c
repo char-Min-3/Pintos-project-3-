@@ -742,8 +742,12 @@ install_page (void *upage, void *kpage, bool writable) {
 
 static bool
 lazy_load_segment (struct page *page, void *aux) {
-	/* TODO: Load the segment from the file */
+		/* TODO: Load the segment from the file */
+	// TODO: 파일에서 세그먼트를 로드하세요.
+
 	/* TODO: This called when the first page fault occurs on address VA. */
+	// TODO: 이 함수는 주소 VA에서 첫 번째 페이지 폴트가 발생했을 때 호출됩니다.
+
 	/* TODO: VA is available when calling this function. */
 	struct file_info *info = (struct file_info *)aux;
 	uint8_t *kpage = page->frame->kva;

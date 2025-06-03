@@ -66,17 +66,17 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		bool (*initializer) (struct page *page, enum vm_type type, void *kva);
 		
 		switch (VM_TYPE(type)) {  // VM_TYPE_MASK로 타입 추출
-			case VM_ANON:
-				initializer = anon_initializer;
-				break;
+  		case VM_ANON:
+    		initializer = anon_initializer;
+    		break;
 
-			case VM_FILE:
-				initializer = file_backed_initializer;
-				break;
+  		case VM_FILE:
+    		initializer = file_backed_initializer;
+    		break;
 
-			default:
-				initializer = NULL;
-				break;
+  		default:
+    		initializer = NULL;
+    		break;
         }
         
 		uninit_new(_pages, upage, init, type, aux, initializer);
