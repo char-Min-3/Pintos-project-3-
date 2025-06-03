@@ -71,6 +71,8 @@
         "cstdbool": "c",
         "random": "c",
         "typeinfo": "c",
-        "vaddr.h": "c"
+        "vaddr.h": "c",
+        "vm.h": "c",
+        "inspect.h": "c"
     }
 }

@@ -88,8 +88,8 @@ struct page_operations {
 /* 현재 프로세스의 메모리 공간을 나타내는 구조체
  * 이 구조체는 자유롭게 설계 가능 */
 struct supplemental_page_table {
-	struct hash *spt_hash;		/*spt hash 테이블 */
-	struct lock *spt_lock;		/*spt lock (임계 구역 관리)*/
+	struct hash spt_hash;		/*spt hash 테이블 */
+	// struct lock spt_lock;		/*spt lock (임계 구역 관리)*/
 };
 
 #include "threads/thread.h"

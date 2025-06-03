@@ -7,7 +7,7 @@
 #include "threads/mmu.h"
 #include "vm/vm.h"
 #include "vm/inspect.h"
-
+#include "include/threads/vaddr.h"
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
@@ -67,7 +67,7 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 
 		bool (*initializer) (struct page *page, enum vm_type type, void *kva);
 		
-		switch (type) {  // VM_TYPE_MASK로 타입 추출
+		switch (VM_TYPE(type)) {  // VM_TYPE_MASK로 타입 추출
   		case VM_ANON:
 		    
     		initializer = anon_initializer;
@@ -95,9 +95,16 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
        //필요한 필드란 무슨 의미일까?
 	   //writable 나중에봐 (2025-06-03 11:31 AM)
 
-	   spt_insert_page(&thread_current()->spt, _pages); 
+	   if(!spt_insert_page(spt, _pages)){
+			free(_pages);
+			goto err;
+	   }
+	 		
 
+		return true;
 	}
+
+	
 err:
 	return false;
 }
@@ -111,10 +118,9 @@ spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 
 	struct page temp_page;
 	temp_page.va = pg_round_down(va);
-	
 	struct hash_elem *e = hash_find(&spt->spt_hash, &temp_page.hash_elem);
 
-	return e ? hash_entry(e, struct page, hash_elem) : NULL;
+	return e != NULL ? hash_entry(e, struct page, hash_elem) : NULL;
 }
 
 /* Insert PAGE into spt with validation. */
@@ -128,9 +134,7 @@ spt_insert_page (struct supplemental_page_table *spt UNUSED,
 
 	int succ = false;
 
-	lock_acquire(&spt->spt_lock);
 	struct hash_elem *elem = hash_insert(&spt->spt_hash, &page->hash_elem);
-	lock_release(&spt->spt_lock);
 
 	if (elem == NULL)
 		succ = true;
@@ -253,21 +257,16 @@ vm_claim_page (void *va UNUSED) {
 static bool
 vm_do_claim_page (struct page *page) {
 	struct frame *frame = vm_get_frame ();
-  if (frame == NULL)
-    return false;
+  	if (frame == NULL)
+    	return false;
 	frame->page = page;
 	page->frame = frame;
-	bool writable = page -> writable;
 	
 
-    if (pml4_get_page(thread_current()->pml4, page->va) == NULL){
-    	bool check = pml4_set_page(thread_current()->pml4, page->va, frame->kva, writable);
-   		if (!check){
-        	return false;
-		}
-    }else {
-		return false;
-	}
+    // if (pml4_get_page(thread_current()->pml4, page->va) != NULL){
+
+   	if (!pml4_set_page(thread_current()->pml4, page->va, frame->kva, page->writable)) return false;
+		
 
     return swap_in(page, frame->kva);
 }
@@ -292,10 +291,8 @@ page_less (const struct hash_elem *a_, const struct hash_elem *b_, void *aux UNU
 // 새로운 보조 페이지 테이블을 초기화합니다.
 void
 supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
-	spt->spt_hash = malloc(sizeof (struct hash));
-	spt->spt_lock = malloc(sizeof (struct lock));
-	hash_init(spt->spt_hash, page_hash, page_less, NULL);
-	lock_init(spt->spt_lock);
+	hash_init(&spt->spt_hash, page_hash, page_less, NULL);
+	// lock_init(&spt->spt_lock);
 }
 
 /* Copy supplemental page table from src to dst */
@@ -313,4 +310,5 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	 * TODO: writeback all the modified contents to the storage. */
 	// TODO: 스레드가 보유한 모든 보조 페이지 테이블을 제거하고,
 	// TODO: 수정된 내용을 스토리지에 기록하세요.
+	
 }
