@@ -48,18 +48,18 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		vm_initializer *init, void *aux) {
 
 	ASSERT (VM_TYPE(type) != VM_UNINIT)
-\
+
 
 	struct supplemental_page_table *spt = &thread_current ()->spt;
 
 	/* Check wheter the upage is already occupied or not. */
 	// 해당 가상 주소(upage)가 이미 점유되어 있는지 확인합니다.
-	if (spt_find_page (spt, upage) == NULL) {
+	// if (spt_find_page (spt, upage) == NULL) {
 
-		struct page *_pages =(struct page*) malloc(sizeof(struct page));
+	// 	struct page *_pages =(struct page*) malloc(sizeof(struct page));
 
 
-		// struct page *_pages = palloc_get_page(PAL_USER);
+	// 	// struct page *_pages = palloc_get_page(PAL_USER);
 
 		bool (*initializer) (struct page *page, enum vm_type type, void *kva);
 		switch (type) {  // VM_TYPE_MASK로 타입 추출
@@ -67,17 +67,28 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		    
     		initializer = anon_initializer;
     		break;
+	// 	bool (*initializer) (struct page *page, enum vm_type type, void *kva);
+	// 	switch (type) {  // VM_TYPE_MASK로 타입 추출
+  	// 	case VM_ANON:
+    // 		initializer = anon_initializer;
+    // 		break;
 
-  		case VM_FILE:
-    		initializer = file_backed_initializer;
-    		break;
+  	// 	case VM_FILE:
+    // 		initializer = file_backed_initializer;
+    // 		break;
 
-  		default:
-    		initializer = NULL;
-    		break;
-        }
+  	// 	default:
+    // 		initializer = NULL;
+    // 		break;
+    //     }
         
 		_pages->writable = writable;
+	// 	uninit_new(_pages, upage, init, type, aux)
+
+		/* TODO: Create the page, fetch the initialier according to the VM type,
+		 * TODO: and then create "uninit" page struct by calling uninit_new. You
+		 * TODO: should modify the field after calling the uninit_new. */
+
 		
 		uninit_new(_pages, upage, init, type, aux, initializer);
        
@@ -93,6 +104,22 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 	   spt_insert_page(&thread_current()->spt, _pages); 
 
 	}
+		// TODO: 그런 다음 uninit_new를 호출하여 "초기화되지 않은" 페이지 구조체를 생성합니다.
+		// TODO: uninit_new 호출 이후에는 구조체 필드를 수정해야 합니다.
+
+
+        
+
+		/* TODO: Insert the page into the spt. */
+		// TODO: 페이지를 보조 페이지 테이블에 삽입합니다.
+		/*위의 함수는 초기화되지 않은 주어진 type의 페이지를 생성합니다. 
+		초기화되지 않은 페이지의 swap_in 핸들러는 
+		자동적으로 페이지 타입에 맞게 페이지를 초기화하고 
+		주어진 AUX를 인자로 삼는 INIT 함수를 호출합니다. 
+		당신이 페이지 구조체를 가지게 되면 프로세스의 보조 페이지 테이블에 
+		그 페이지를 삽입하십시오. 
+		vm.h에 정의되어 있는 VM_TYPE 매크로를 사용하면 편리할 것입니다.  */
+	// }
 err:
 	return false;
 }
