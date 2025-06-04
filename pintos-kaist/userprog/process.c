@@ -245,6 +245,8 @@ process_exec (void *f_name) {
 
 	if(f_name == NULL) return -1;
 	
+	//맞나?
+	supplemental_page_table_init (&thread_current()->spt);	
 
 	char *fn_copy = palloc_get_page(PAL_ZERO); 
 	if (fn_copy == NULL) return -1;
@@ -290,7 +292,7 @@ process_exec (void *f_name) {
 
 
 	push_by_stack(&_if, argv, argc);
-	// palloc_free_page (fn_copy);
+	palloc_free_page (fn_copy);
 
 	/* Start switched process. */
 	do_iret (&_if);
@@ -755,7 +757,6 @@ lazy_load_segment (struct page *page, void *aux) {
 		free(info);
 		return false;
 	}
-	
 	// 채우고 남은 공간을 0으로 채운다. 마지막 페이지가 아니면 채울 필요 없음.
 	memset (kpage + info->page_read, 0, info->page_zero);
 	free(info);
@@ -805,7 +806,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		aux->page_read = page_read_bytes;
 		aux->page_zero = page_zero_bytes;
 		aux->offset = ofs;
-
+		
 		if (!vm_alloc_page_with_initializer (VM_ANON, upage,
 					writable, lazy_load_segment, aux))
 			return false;
