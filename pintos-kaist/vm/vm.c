@@ -82,9 +82,9 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
     		break;
         }
         
-		_pages->writable = writable;
 		
 		uninit_new(_pages, upage, init, type, aux, initializer);
+		_pages->writable = writable;
        
 	   /*
 	   "페이지를 생성하고, VM 타입에 따라 초기화 함수를 정한 뒤, 
@@ -222,11 +222,11 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	if (write && !page->writable){
 		return false;
 	}
+
 	/* 권한 */
 	if (!not_present){
 		return false;
 	}
-
 	return vm_do_claim_page (page);
 }
 
@@ -257,15 +257,18 @@ vm_claim_page (void *va UNUSED) {
 static bool
 vm_do_claim_page (struct page *page) {
 	struct frame *frame = vm_get_frame ();
-  	if (frame == NULL)
-    	return false;
+  	if (frame == NULL){
+		return false;
+	}
 	frame->page = page;
 	page->frame = frame;
 	
 
     // if (pml4_get_page(thread_current()->pml4, page->va) != NULL){
 
-   	if (!pml4_set_page(thread_current()->pml4, page->va, frame->kva, page->writable)) return false;
+   	if (!pml4_set_page(thread_current()->pml4, page->va, frame->kva, page->writable)){
+		return false;
+	}
 		
 
     return swap_in(page, frame->kva);
