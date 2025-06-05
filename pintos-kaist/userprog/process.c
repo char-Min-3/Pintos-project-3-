@@ -242,7 +242,8 @@ process_exec (void *f_name) {
 	bool success;
 
 	if(f_name == NULL) return -1;
-
+	
+	supplemental_page_table_init (&thread_current()->spt);
 	char *fn_copy = palloc_get_page(PAL_ZERO); 
 	if (fn_copy == NULL) return -1;
 
@@ -755,11 +756,14 @@ lazy_load_segment (struct page *page, void *aux) {
 	if (file_read_at (info->file, kpage, info->page_read,info->offset) != (int) info->page_read) 
 	{
 		free(info);
+		printf("check\n");
 		return false;
 	}
 	// 채우고 남은 공간을 0으로 채운다. 마지막 페이지가 아니면 채울 필요 없음.
 	memset (kpage + info->page_read, 0, info->page_zero);
 	free(info);
+
+
 	return true;
 
 }
@@ -825,12 +829,11 @@ static bool
 setup_stack (struct intr_frame *if_) {
 	bool success = false;
 	void *stack_bottom = (void *) (((uint8_t *) USER_STACK) - PGSIZE);
-
+     
 	/* TODO: Map the stack on stack_bottom and claim the page immediately.
 	 * TODO: If success, set the rsp accordingly.
 	 * TODO: You should mark the page is stack. */
 	/* TODO: Your code goes here */
-
 	if(vm_alloc_page_with_initializer(VM_ANON | VM_MARKER_0, stack_bottom, true, NULL, NULL)) {
 		success = vm_claim_page(stack_bottom);
 		if (success){
@@ -838,7 +841,7 @@ setup_stack (struct intr_frame *if_) {
 			thread_current()->stack_bottom = stack_bottom;
 		}
 	}
-
+    
 	return success;
 }
 
@@ -868,6 +871,7 @@ push_by_stack(struct intr_frame *if_, char *argv[], int argc){
     for (int i = argc - 1; i >= 0; i--) {
         if_->rsp -= 8;
         memcpy((void *)if_->rsp, &arg_addr[i], 8);
+	    // *(uint64_t *)if_->rsp = (uint64_t)arg_addr[i];
     }
 
     // rsi = argv, rdi = argc
