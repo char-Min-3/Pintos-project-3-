@@ -66,18 +66,17 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		bool (*initializer) (struct page *page, enum vm_type type, void *kva);
 		
 		switch (VM_TYPE(type)) {  // VM_TYPE_MASK로 타입 추출
-  		case VM_ANON:
-		    
-    		initializer = anon_initializer;
-    		break;
+			case VM_ANON:
+				initializer = anon_initializer;
+				break;
 
-  		case VM_FILE:
-    		initializer = file_backed_initializer;
-    		break;
+			case VM_FILE:
+				initializer = file_backed_initializer;
+				break;
 
-  		default:
-    		initializer = NULL;
-    		break;
+			default:
+				initializer = NULL;
+				break;
         }
         
 		uninit_new(_pages, upage, init, type, aux, initializer);
@@ -309,22 +308,16 @@ supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 
 		if (page_get_type(src_page) == VM_UNINIT){
 			struct uninit_page *src_un = &src_page->uninit;
-
-			struct page *dst_page = malloc(sizeof(struct page));
-			if(dst_page == NULL) return false;
-			if(!spt_insert_page(dst, dst_page)) return false;
-			
-			uninit_new(dst_page, src_page->va, src_un->init, VM_UNINIT, src_un->aux, src_un->page_initializer);
+			if(!vm_alloc_page_with_initializer(src_page->uninit.type, src_page->va, src_page->writable, NULL, NULL)) 
+				return false;
 		}
 
-		else{
-			bool success;
-
-			success = vm_alloc_page_with_initializer(VM_ANON, src_page->va, src_page->writable, anon_initializer, NULL);
-			success = vm_claim_page(src_page->va);
+		else if(page_get_type(src_page) == VM_ANON){
+			if(!vm_alloc_page_with_initializer(VM_ANON, src_page->va, src_page->writable, anon_initializer, NULL)) 
+				return false;
+			if(src_page->frame == NULL) continue;
+			if(!vm_claim_page(src_page->va)) return false;
 			
-			if(!success) return false;
-
 			struct page *dst_page = spt_find_page(dst, src_page->va);
 			memcpy(dst_page->frame->kva, src_page->frame->kva, PGSIZE);
 		}
@@ -341,7 +334,6 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	// TODO: 스레드가 보유한 모든 보조 페이지 테이블을 제거하고,
 	// TODO: 수정된 내용을 스토리지에 기록하세요.
 	hash_clear(&spt->spt_hash, spt_kill_destructor);
-	
 }
 
 static void spt_kill_destructor (struct hash_elem *h, void *aux UNUSED) {

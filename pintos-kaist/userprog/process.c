@@ -242,9 +242,6 @@ process_exec (void *f_name) {
 	bool success;
 
 	if(f_name == NULL) return -1;
-	
-	//맞나?
-	supplemental_page_table_init (&thread_current()->spt);	
 
 	char *fn_copy = palloc_get_page(PAL_ZERO); 
 	if (fn_copy == NULL) return -1;
@@ -276,6 +273,7 @@ process_exec (void *f_name) {
 	
 	/* We first kill the current context */
 	process_cleanup ();
+	supplemental_page_table_init(&thread_current()->spt);
 
 	/* And then load the binary */
 	success = load (file_name, &_if);
