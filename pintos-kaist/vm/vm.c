@@ -8,6 +8,7 @@
 #include "vm/vm.h"
 #include "vm/inspect.h"
 #include "include/threads/vaddr.h"
+#include "string.h"
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
@@ -61,8 +62,6 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 	if (spt_find_page (spt, upage) == NULL) {
 
 		struct page *_pages =(struct page*) malloc(sizeof(struct page));
-
-
 		// struct page *_pages = palloc_get_page(PAL_USER);
 
 		bool (*initializer) (struct page *page, enum vm_type type, void *kva);
@@ -82,7 +81,6 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
     		break;
         }
         
-		
 		uninit_new(_pages, upage, init, type, aux, initializer);
 		_pages->writable = writable;
        
@@ -99,8 +97,6 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 			free(_pages);
 			goto err;
 	   }
-	 		
-
 		return true;
 	}
 
@@ -303,6 +299,19 @@ supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
 bool
 supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 		struct supplemental_page_table *src UNUSED) {
+	// dst가 자식, src가 부모
+	hash_init(dst, page_hash, page_less, NULL);	
+	struct hash_iterator iterator;
+
+	hash_first(&iterator, &src->spt_hash);
+
+	while(hash_next(&iterator)){
+		struct page *dst_page = malloc(sizeof (struct page));
+		struct page *src_page = hash_entry(hash_cur(&iterator), struct page, hash_elem);
+		memcpy(dst_page, src_page, sizeof (struct page));
+		hash_insert(&dst->spt_hash, &dst_page->hash_elem);
+	}
+	return true;
 }
 
 /* Free the resource hold by the supplemental page table */
@@ -313,5 +322,12 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	 * TODO: writeback all the modified contents to the storage. */
 	// TODO: 스레드가 보유한 모든 보조 페이지 테이블을 제거하고,
 	// TODO: 수정된 내용을 스토리지에 기록하세요.
+	hash_clear(&spt->spt_hash, spt_kill_destructor);
 	
+}
+
+static void spt_kill_destructor (struct hash_elem *h, void *aux UNUSED) {
+	struct page *page = hash_entry(h, struct page, hash_elem);
+	destroy(page);
+	free(page);
 }

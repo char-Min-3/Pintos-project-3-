@@ -193,17 +193,16 @@ __do_fork (void *aux) {
 	/* TODO: somehow pass the parent_if. (i.e. process_fork()'s if_) */
 	// struct intr_frame *parent_if = &if_;
 
-	bool succ = true;
-
 	/* 1. Read the cpu context to local stack. */
 	// memcpy (&if_, parent_if, sizeof (struct intr_frame));
 
 	/* 2. Duplicate PT */
-	current->pml4 = pml4_create();
-	if (current->pml4 == NULL)
-		goto error;
+	// current->pml4 = pml4_create();
+	// if (current->pml4 == NULL)
+	// 	goto error;
 
 	process_activate (current);
+	
 #ifdef VM
 	supplemental_page_table_init (&current->spt);
 	if (!supplemental_page_table_copy (&current->spt, &parent->spt))
@@ -226,11 +225,10 @@ __do_fork (void *aux) {
 	process_init ();
 
 	/* Finally, switch to the newly created process. */
-	if (succ){
-		sync->success = true;
-		sema_up(&sync->sema);
-		do_iret (&if_);
-	}
+	sync->success = true;
+	sema_up(&sync->sema);
+	do_iret (&if_);
+	
 error:
 	sync->success = false;
 	sema_up(&sync->sema);
