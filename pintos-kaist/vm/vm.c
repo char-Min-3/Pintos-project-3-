@@ -1,6 +1,6 @@
 /* vm.c: Generic interface for virtual memory objects. */
 // vm.c: 가상 메모리 객체를 위한 일반적인 인터페이스
-
+#include "userprog/process.h"
 #include "threads/malloc.h"
 #include "threads/palloc.h"
 #include "threads/thread.h" 
@@ -188,8 +188,22 @@ vm_get_frame (void) {
 
 /* Growing the stack. */
 // 스택을 확장합니다.
-static void
+static bool
 vm_stack_growth (void *addr UNUSED) {
+	void *stack_bottom = thread_current()->stack_bottom;
+	void *new_addr = pg_round_down(addr);
+
+	while(new_addr < stack_bottom){
+		stack_bottom -= PGSIZE;
+		if(!vm_alloc_page_with_initializer(VM_ANON | VM_MARKER_0, stack_bottom, true, NULL, NULL)){
+			return false;
+		}
+		if (!vm_claim_page(stack_bottom)) return false;
+
+	}
+	thread_current()->stack_bottom = stack_bottom;
+	return true;
+
 }
 
 /* Handle the fault on write_protected page */
@@ -205,13 +219,26 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 		bool user UNUSED, bool write UNUSED, bool not_present UNUSED) {
 	struct supplemental_page_table *spt UNUSED = &thread_current ()->spt;
 	struct page *page = spt_find_page(spt,addr);
+
+
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
 	// TODO: 페이지 폴트를 검증하고, 처리 코드를 작성하세요.
 	/* 페이지가 NULL */
-	if (page == NULL){
+	/* stack에 공간이 부족하다 !*/
+
+	if (page == NULL) {
+		if ((addr < USER_STACK) && (addr >= USER_STACK - (1 << 20)) && (addr >= f->rsp - 8)) {
+			if (vm_stack_growth(addr)) {
+				return true;
+			}
+			return false;
+		}
 		return false;
 	}
+
+
+
 	/* write 접근했는데, 페이지가 writable 하지 않을 경우 */
 	if (write && !page->writable){
 		return false;
@@ -294,6 +321,61 @@ supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
 
 /* Copy supplemental page table from src to dst */
 // 보조 페이지 테이블을 src에서 dst로 복사합니다.
+// bool
+// supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
+// 		struct supplemental_page_table *src UNUSED) {
+// 	// dst가 자식, src가 부모
+// 	hash_init(dst, page_hash, page_less, NULL);	
+// 	struct hash_iterator iterator;
+
+// 	hash_first(&iterator, &src->spt_hash);
+
+// 	while(hash_next(&iterator)){
+// 		struct page *dst_page = malloc(sizeof (struct page));
+// 		struct page *src_page = hash_entry(hash_cur(&iterator), struct page, hash_elem);
+// 		if (dst_page == NULL) return false;
+
+// 		dst_page->va = src_page->va;
+//         dst_page->writable = src_page->writable;
+		
+// 		switch(src_page->operations->type){
+// 			case VM_UNINIT:
+// 				if(!vm_alloc_page_with_initializer(src_page->uninit.type,src_page->va,src_page->writable,src_page->uninit.init, NULL)){
+// 					free(dst_page);
+// 					return false;
+// 				}
+// 				free(dst_page);
+// 				break;
+// 			case VM_ANON:
+// 				if(src_page->frame !=NULL){
+// 						struct frame *frame = vm_get_frame ();
+// 						if (frame == NULL){
+// 							free(dst_page);
+// 							return false;
+// 						}
+// 						frame->page = dst_page;
+// 						dst_page->frame = frame;
+// 						memcpy(dst_page->frame->kva,src_page->frame->kva,sizeof(PGSIZE));
+// 						anon_initializer(dst_page,VM_ANON,dst_page->frame->kva);
+// 				}
+// 				if (!hash_insert(&dst->spt_hash, &dst_page->hash_elem)) {
+// 					free(dst_page);
+// 					return false;
+// 				}
+// 				break;
+				
+// 			case VM_FILE:
+// 				free(dst_page);
+// 			break;
+// 		}
+
+
+// 		// memcpy(dst_page, src_page, sizeof (struct page));
+// 		hash_insert(&dst->spt_hash, &dst_page->hash_elem);
+// 	}
+// 	return true;
+// }
+
 bool
 supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 		struct supplemental_page_table *src UNUSED) {
@@ -325,6 +407,8 @@ supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 	return true;
 }
 
+
+
 /* Free the resource hold by the supplemental page table */
 // 보조 페이지 테이블이 보유한 자원을 해제합니다.
 void
@@ -333,11 +417,13 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	 * TODO: writeback all the modified contents to the storage. */
 	// TODO: 스레드가 보유한 모든 보조 페이지 테이블을 제거하고,
 	// TODO: 수정된 내용을 스토리지에 기록하세요.
+
 	hash_clear(&spt->spt_hash, spt_kill_destructor);
 }
 
 static void spt_kill_destructor (struct hash_elem *h, void *aux UNUSED) {
 	struct page *page = hash_entry(h, struct page, hash_elem);
+
 	destroy(page);
 	free(page);
 }

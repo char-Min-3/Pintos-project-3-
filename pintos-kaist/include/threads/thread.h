@@ -110,6 +110,8 @@ struct thread {
 	struct child_info *my_info;
 	struct file *running_file;
 
+	void *stack_bottom;
+
 	// int child_exit_status;
 
 	// struct semaphore exit_wait;			/*프로세스 대기 세마포어 exec*/
