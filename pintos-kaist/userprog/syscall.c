@@ -121,8 +121,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 // 유저 주소 체크 함수
 void 
 check_user(const void *uaddr){
-	if (uaddr == NULL || is_kernel_vaddr(uaddr) || 
-		pml4_get_page(thread_current()->pml4, uaddr) == NULL){
+	if (uaddr == NULL || is_kernel_vaddr(uaddr)){
 		sys_exit(-1);
 	}
 }
@@ -133,9 +132,11 @@ check_user_buffer(const void *uaddr, size_t size) {
 	uint8_t *end = start + size;
 
 	while (start < end) {
-		if (!is_user_vaddr(start) || 
-			pml4_get_page(thread_current()->pml4, start) == NULL)
+		if (!is_user_vaddr(start))
 			sys_exit(-1);
+			
+		// || pml4_get_page(thread_current()->pml4, start) == NULL
+			
 
 		// 다음 페이지 경계로 이동
 		start = pg_round_down(start) + PGSIZE;
