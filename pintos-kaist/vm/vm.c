@@ -319,62 +319,6 @@ supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
 	// lock_init(&spt->spt_lock);
 }
 
-/* Copy supplemental page table from src to dst */
-// 보조 페이지 테이블을 src에서 dst로 복사합니다.
-// bool
-// supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
-// 		struct supplemental_page_table *src UNUSED) {
-// 	// dst가 자식, src가 부모
-// 	hash_init(dst, page_hash, page_less, NULL);	
-// 	struct hash_iterator iterator;
-
-// 	hash_first(&iterator, &src->spt_hash);
-
-// 	while(hash_next(&iterator)){
-// 		struct page *dst_page = malloc(sizeof (struct page));
-// 		struct page *src_page = hash_entry(hash_cur(&iterator), struct page, hash_elem);
-// 		if (dst_page == NULL) return false;
-
-// 		dst_page->va = src_page->va;
-//         dst_page->writable = src_page->writable;
-		
-// 		switch(src_page->operations->type){
-// 			case VM_UNINIT:
-// 				if(!vm_alloc_page_with_initializer(src_page->uninit.type,src_page->va,src_page->writable,src_page->uninit.init, NULL)){
-// 					free(dst_page);
-// 					return false;
-// 				}
-// 				free(dst_page);
-// 				break;
-// 			case VM_ANON:
-// 				if(src_page->frame !=NULL){
-// 						struct frame *frame = vm_get_frame ();
-// 						if (frame == NULL){
-// 							free(dst_page);
-// 							return false;
-// 						}
-// 						frame->page = dst_page;
-// 						dst_page->frame = frame;
-// 						memcpy(dst_page->frame->kva,src_page->frame->kva,sizeof(PGSIZE));
-// 						anon_initializer(dst_page,VM_ANON,dst_page->frame->kva);
-// 				}
-// 				if (!hash_insert(&dst->spt_hash, &dst_page->hash_elem)) {
-// 					free(dst_page);
-// 					return false;
-// 				}
-// 				break;
-				
-// 			case VM_FILE:
-// 				free(dst_page);
-// 			break;
-// 		}
-
-
-// 		// memcpy(dst_page, src_page, sizeof (struct page));
-// 		hash_insert(&dst->spt_hash, &dst_page->hash_elem);
-// 	}
-// 	return true;
-// }
 
 bool
 supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
