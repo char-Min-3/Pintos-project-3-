@@ -197,9 +197,9 @@ __do_fork (void *aux) {
 	// memcpy (&if_, parent_if, sizeof (struct intr_frame));
 
 	/* 2. Duplicate PT */
-	// current->pml4 = pml4_create();
-	// if (current->pml4 == NULL)
-	// 	goto error;
+	current->pml4 = pml4_create();
+	if (current->pml4 == NULL)
+		goto error;
 
 	process_activate (current);
 	
