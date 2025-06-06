@@ -31,7 +31,8 @@ int sys_read(int, void *, unsigned);
 int sys_filesize(int);
 int sys_wait(tid_t);
 bool sys_remove (const char *);
-
+void *sys_mmap(void *addr, size_t length, int writable, int fd, off_t offset);
+void sys_munmap(void *addr);
 struct lock file_lock; // file lock
 
 /* System call.
@@ -107,6 +108,12 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			break;
 		case SYS_EXIT:
 			sys_exit(f->R.rdi);
+			break;
+		case SYS_MMAP:
+			f->R.rax = sys_mmap(f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8);
+			break;
+		case SYS_MUNMAP:
+			sys_munmap(f->R.rdi);
 			break;
 		default:
 			sys_exit(-1);
@@ -339,4 +346,48 @@ sys_exec (const char *cmd_line){
 
 	return thread_current()->tid;
 }
+struct file *find_file_fd(int fd) {
+	struct thread *cur = thread_current();
+	if (fd < 0 || fd >= 64) {
+		return NULL;
+	}
+	return cur->fd_table[fd];
+}
+void *sys_mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
 
+    struct file *file;
+    //시스템 입출력 전용이니 일단 빼두었음.
+    if (fd == 0 || fd == 1)
+        sys_exit(-1);
+
+    //주소 유효성 검사
+    check_user(addr);
+
+    // 정확히 1 페이지 단위로 들어오는 체크
+    if (offset % PGSIZE != 0) {
+        return NULL;
+	}
+    if (pg_round_down(addr) != addr){
+        return NULL;
+    }
+
+
+    if(length <= 0 || addr == NULL){
+		return 0;
+	}
+
+    if(check_fd_table(fd)){
+    	file = find_file_fd(fd);
+    	if (file == NULL)
+        	return NULL;
+	}
+    return do_mmap(addr, length, writable, file, offset);
+}
+
+
+
+void sys_munmap(void *addr){
+	// 주소 유효성 검사
+	check_user(addr);
+	do_munmap(addr);
+}
