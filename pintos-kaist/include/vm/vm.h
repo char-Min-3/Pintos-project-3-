@@ -2,6 +2,7 @@
 #define VM_VM_H
 #include <stdbool.h>
 #include "threads/palloc.h"
+#include "threads/synch.h"
 #include "lib/kernel/hash.h"
 
 enum vm_type {
@@ -33,6 +34,7 @@ enum vm_type {
 
 struct page_operations;
 struct thread;
+struct frame;
 
 #define VM_TYPE(type) ((type) & 7)
 
@@ -67,6 +69,7 @@ struct page {
 struct frame {
 	void *kva;           /* 커널 가상 주소 */
 	struct page *page;   /* 해당 프레임에 연결된 페이지 */
+	struct hash_elem hash_elem;
 };
 
 /* 페이지 동작을 위한 함수 테이블
@@ -90,6 +93,16 @@ struct supplemental_page_table {
 	struct hash spt_hash;		/*spt hash 테이블 */
 	// struct lock spt_lock;		/*spt lock (임계 구역 관리)*/
 };
+
+struct frame_table{
+	struct hash ft;
+	struct lock ft_lock;
+};
+
+extern struct frame_table frame_table;
+
+unsigned frame_hash (const struct hash_elem *e, void *aux);
+bool	frame_less (const struct hash_elem *a, const struct hash_elem *b, void *aux);
 
 #include "threads/thread.h"
 void supplemental_page_table_init (struct supplemental_page_table *spt);
@@ -127,3 +140,4 @@ bool page_less (const struct hash_elem *a_, const struct hash_elem *b_, void *au
 
 static void spt_kill_destructor (struct hash_elem *h, void *aux UNUSED);
 #endif  /* VM_VM_H */
+

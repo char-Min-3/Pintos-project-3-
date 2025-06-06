@@ -9,13 +9,15 @@
 #include "vm/inspect.h"
 #include "include/threads/vaddr.h"
 #include "string.h"
-
+struct frame_table frame_table;
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
 // 각 서브시스템의 초기화 코드를 호출하여 가상 메모리 서브시스템을 초기화합니다.
 void
 vm_init (void) {
+	lock_init(&frame_table.ft_lock);
+	hash_init(&frame_table.ft,frame_hash,frame_less,NULL);
 	vm_anon_init ();
 	vm_file_init ();
 #ifdef EFILESYS  /* For project 4 */
@@ -148,6 +150,26 @@ vm_get_victim (void) {
 	struct frame *victim = NULL;
 	/* TODO: The policy for eviction is up to you. */
 	// TODO: 페이지 교체 정책은 여러분이 자유롭게 구현하세요.
+	struct hash_iterator i;
+
+    /* 1) frame_table 전체에 락을 걸고 순회 */
+    lock_acquire(&frame_table.ft_lock);
+
+    /* 2) 해시 테이블을 처음부터 순회 */
+    hash_first(&i, &frame_table.ft);
+    while (hash_next(&i)) {
+        struct frame *f = hash_entry(hash_cur(&i), struct frame, hash_elem);
+
+        /* f->page != NULL인 경우에만, “실제로 사용 중인” 프레임으로 간주 */
+        if (f->page != NULL) {
+            victim = f;
+            break;
+        }
+    }
+
+    /* 3) 락 해제 */
+    lock_release(&frame_table.ft_lock);
+
 	return victim;
 }
 
@@ -159,7 +181,15 @@ vm_evict_frame (void) {
 	struct frame *victim UNUSED = vm_get_victim ();
 	/* TODO: swap out the victim and return the evicted frame. */
 	// TODO: victim을 swap out하고 해당 프레임을 반환하세요.
-	return NULL;
+	if (victim == NULL) return NULL;
+	//희생페이지 쫓겨냄
+	swap_out(victim->page);
+	//page의 frame 연결 끊어준다.
+	victim->page->frame = NULL;
+	//frame의 page도 끊어준다.
+	victim->page = NULL;
+
+	return victim;
 }
 
 /* palloc() and get frame. If there is no available page, evict the page
@@ -185,8 +215,13 @@ vm_get_frame (void) {
 	/* TODO: Fill this function. */
 	// TODO: 이 함수를 구현하세요.
 
+	lock_acquire(&frame_table.ft_lock);
+	hash_insert(&frame_table.ft,&frame->hash_elem);
+	lock_release(&frame_table.ft_lock);
+
 	ASSERT (frame != NULL);
 	ASSERT (frame->page == NULL);
+
 	return frame;
 }
 
@@ -312,6 +347,22 @@ page_less (const struct hash_elem *a_, const struct hash_elem *b_, void *aux UNU
 	const struct page *b = hash_entry (b_, struct page, hash_elem);
 
 	return a->va < b->va;
+}
+
+
+
+unsigned
+frame_hash (const struct hash_elem *e_, void *aux UNUSED) {
+    struct frame *f = hash_entry(e_, struct frame, hash_elem);
+    return hash_bytes(&f->kva, sizeof f->kva);
+}
+
+/* Returns true if frame a precedes frame b. */
+bool
+frame_less (const struct hash_elem *a_, const struct hash_elem *b_, void *aux UNUSED) {
+    struct frame *a = hash_entry(a_, struct frame, hash_elem);
+    struct frame *b = hash_entry(b_, struct frame, hash_elem);
+    return a->kva < b->kva;
 }
 
 
