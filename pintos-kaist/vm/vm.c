@@ -10,6 +10,7 @@
 #include "include/threads/vaddr.h"
 #include "string.h"
 
+
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
 // 각 서브시스템의 초기화 코드를 호출하여 가상 메모리 서브시스템을 초기화합니다.
@@ -66,17 +67,17 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		bool (*initializer) (struct page *page, enum vm_type type, void *kva);
 		
 		switch (VM_TYPE(type)) {  // VM_TYPE_MASK로 타입 추출
-			case VM_ANON:
-				initializer = anon_initializer;
-				break;
+  		case VM_ANON:
+    		initializer = anon_initializer;
+    		break;
 
-			case VM_FILE:
-				initializer = file_backed_initializer;
-				break;
+  		case VM_FILE:
+    		initializer = file_backed_initializer;
+    		break;
 
-			default:
-				initializer = NULL;
-				break;
+  		default:
+    		initializer = NULL;
+    		break;
         }
         
 		uninit_new(_pages, upage, init, type, aux, initializer);
@@ -92,10 +93,12 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 	   //writable 나중에봐 (2025-06-03 11:31 AM)
 
 	   if(!spt_insert_page(spt, _pages)){
+		    printf("spt_insert_page failed: va=%p\n", upage);
 			free(_pages);
 			goto err;
 	   }
 		return true;
+	
 	}
 
 	
@@ -113,6 +116,7 @@ spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 	struct page temp_page;
 	temp_page.va = pg_round_down(va);
 	struct hash_elem *e = hash_find(&spt->spt_hash, &temp_page.hash_elem);
+
 
 	return e != NULL ? hash_entry(e, struct page, hash_elem) : NULL;
 }
@@ -275,7 +279,7 @@ vm_claim_page (void *va UNUSED) {
 
 /* Claim the PAGE and set up the mmu. */
 // 주어진 PAGE를 점유하고 MMU 설정을 완료합니다.
-static bool
+bool
 vm_do_claim_page (struct page *page) {
 	struct frame *frame = vm_get_frame ();
   	if (frame == NULL){
@@ -350,6 +354,11 @@ supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 	}
 	return true;
 }
+
+
+
+
+
 
 
 
