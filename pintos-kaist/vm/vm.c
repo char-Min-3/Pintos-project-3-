@@ -279,7 +279,7 @@ vm_claim_page (void *va UNUSED) {
 
 /* Claim the PAGE and set up the mmu. */
 // 주어진 PAGE를 점유하고 MMU 설정을 완료합니다.
-static bool
+bool
 vm_do_claim_page (struct page *page) {
 	struct frame *frame = vm_get_frame ();
   	if (frame == NULL){
