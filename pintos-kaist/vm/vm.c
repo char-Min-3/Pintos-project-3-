@@ -123,6 +123,8 @@ spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 	return e != NULL ? hash_entry(e, struct page, hash_elem) : NULL;
 }
 
+
+
 /* Insert PAGE into spt with validation. */
 // 검증 후 PAGE를 spt에 삽입합니다.
 bool
@@ -402,6 +404,15 @@ supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 			struct page *dst_page = spt_find_page(dst, src_page->va);
 			memcpy(dst_page->frame->kva, src_page->frame->kva, PGSIZE);
 		}
+		// }else if(page_get_type(src_page) == VM_FILE){
+		// 		if(!vm_alloc_page_with_initializer(VM_FILE, src_page->va, src_page->writable, file_backed_initializer, NULL)) 
+		// 		return false;
+		// 	if(src_page->frame == NULL) continue;
+		// 	if(!vm_claim_page(src_page->va)) return false;
+			
+		// 	struct page *dst_page = spt_find_page(dst, src_page->va);
+		// 	memcpy(dst_page->frame->kva, src_page->frame->kva, PGSIZE);
+		// }
 	}
 	return true;
 }
