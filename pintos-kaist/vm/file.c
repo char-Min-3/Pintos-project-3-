@@ -18,6 +18,8 @@ static const struct page_operations file_ops = {
 /* The initializer of file vm */
 void
 vm_file_init (void) {
+	lock_init(&frame_table.ft_lock);
+	hash_init(&frame_table.ft,frame_hash,frame_less,NULL);
 }
 
 /* Initialize the file backed page */bool
@@ -47,12 +49,42 @@ file_backed_initializer (struct page *page, enum vm_type type, void *kva) {
 static bool
 file_backed_swap_in (struct page *page, void *kva) {
 	struct file_page *file_page UNUSED = &page->file;
+	off_t bytes_read = file_read_at(file_page->file,kva,file_page->page_read,file_page->offset);
+	/* bytes_read : 실제로 읽은 바이트 // page_read : 읽어야할 바이트*/
+	// 같아야함 !
+	if (bytes_read != file_page->page_read){
+		return false;
+	}
+	//나머지를 0으로 채워준다. page_zero 만큼.
+	memset(kva+file_page->page_read,0, file_page->page_zero);
+	//페이지 매핑해주기
+	pml4_set_page(thread_current()->pml4, page->va,kva, page->writable);
+	return true;
 }
 
 /* Swap out the page by writeback contents to the file. */
 static bool
 file_backed_swap_out (struct page *page) {
 	struct file_page *file_page UNUSED = &page->file;
+	void *kva = page->frame->kva;
+	
+	if(pml4_is_dirty(thread_current()->pml4,page->va)){
+		file_write_at(file_page->file, kva, file_page->page_read, file_page->offset);
+	}
+
+	//pml4에서 페이지 제거함.
+	pml4_clear_page(thread_current()->pml4, page->va);
+	//frame 페이지 제거함.
+	palloc_free_page(kva);
+	//hash에서도 삭제하기
+	lock_acquire(&frame_table.ft_lock);
+	hash_delete(&frame_table.ft, &page->frame->hash_elem);
+	lock_release(&frame_table.ft_lock);
+	
+	// free(page->frame);
+	page->frame = NULL;
+	return true;
+
 }
 
 /* Destory the file backed page. PAGE will be freed by the caller. */
@@ -60,7 +92,7 @@ static void
 file_backed_destroy (struct page *page) {
 	struct file_page *file_page UNUSED = &page->file;
 	if(pml4_is_dirty(thread_current()->pml4,page->va)){
-		file_write_at(file_page->file, page->va, file_page->page_read, file_page->offset);
+		file_write_at(file_page->file, page->frame->kva, file_page->page_read, file_page->offset);
 	}
 }
 
@@ -118,7 +150,7 @@ do_munmap (void *addr) {
 
 		//사용중인 페이지를 감지? 반복문에 가둬야하나?
 		if(pml4_is_dirty(thread_current()->pml4, page->va)){
-			file_write_at(aux->file, addr,aux->page_read, aux->offset);
+			file_write_at(aux->file, page->frame->kva,aux->page_read, aux->offset);
 			pml4_set_dirty(thread_current()->pml4, page->va, 0);
 		}
 	

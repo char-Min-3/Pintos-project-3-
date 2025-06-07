@@ -130,7 +130,9 @@ spt_insert_page (struct supplemental_page_table *spt UNUSED,
 
 	int succ = false;
 
+	lock_acquire(&spt->spt_lock);
 	struct hash_elem *elem = hash_insert(&spt->spt_hash, &page->hash_elem);
+	lock_release(&spt->spt_lock);
 
 	if (elem == NULL)
 		succ = true;
@@ -259,7 +261,9 @@ vm_do_claim_page (struct page *page) {
 	frame->page = page;
 	page->frame = frame;
 	
-
+	lock_acquire(&frame_table.ft_lock);
+	hash_insert(&frame_table.ft, &page->frame->hash_elem);
+	lock_release(&frame_table.ft_lock);
     // if (pml4_get_page(thread_current()->pml4, page->va) != NULL){
 
    	if (!pml4_set_page(thread_current()->pml4, page->va, frame->kva, page->writable)){
