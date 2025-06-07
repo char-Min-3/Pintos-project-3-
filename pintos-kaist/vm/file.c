@@ -34,11 +34,14 @@ file_backed_initializer (struct page *page, enum vm_type type, void *kva) {
 	page->operations = &file_ops;
 	
 	struct file_page *file_page = &page->file;
-	struct file_info *aux = malloc(sizeof(struct file_info));
+	struct file_info *aux = page->uninit.aux;
 	file_page->file = aux->file;
 	file_page->offset = aux->offset;
 	file_page->page_read = aux->page_read;
 	file_page->page_zero = aux->page_zero;
+
+	
+    page->uninit.aux = NULL;
 	return true;
 }
 
@@ -88,8 +91,11 @@ do_mmap (void *addr, size_t length, int writable,
 		aux->offset = offset;
 		
 		if (!vm_alloc_page_with_initializer (VM_FILE, addr,
-					writable, lazy_load_segment, aux))
+					writable, lazy_load_segment, aux)){
+			free(aux);
 			return NULL;
+		}
+			
 
 		read_bytes -= page_read_bytes;
 		zero_bytes -= page_zero_bytes;
@@ -103,21 +109,23 @@ do_mmap (void *addr, size_t length, int writable,
 void
 do_munmap (void *addr) {
    
-   while(true){
-   struct page *page = spt_find_page(&thread_current()->spt, addr);
-    if(page == NULL) return;
-   struct file_info *aux = page->uninit.aux;
-    if(aux == NULL) return;
-    //사용중인 페이지를 감지? 반복문에 가둬야하나?
- if(pml4_is_dirty(thread_current()->pml4, page->va)){
-       file_write_at(aux->file, addr,aux->page_read, aux->offset);
-    pml4_set_dirty(thread_current()->pml4, page->va, 0);
- }
-   
- pml4_clear_page(thread_current()->pml4, page->va);
- addr +=PGSIZE;
-   }
+   	while(true){
+		struct page *page = spt_find_page(&thread_current()->spt, addr);
+
+		if(page == NULL) return;
+		
+		struct file_page *aux = &page->file;
+
+		if(aux == NULL) return;
+
+		//사용중인 페이지를 감지? 반복문에 가둬야하나?
+		if(pml4_is_dirty(thread_current()->pml4, page->va)){
+			file_write_at(aux->file, addr,aux->page_read, aux->offset);
+			pml4_set_dirty(thread_current()->pml4, page->va, 0);
+		}
+	
+		pml4_clear_page(thread_current()->pml4, page->va);
+		addr +=PGSIZE;
+	}
  
-
-
 }
