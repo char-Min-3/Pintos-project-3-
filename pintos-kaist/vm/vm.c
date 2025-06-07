@@ -420,13 +420,6 @@ supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 	return true;
 }
 
-
-
-
-
-
-
-
 /* Free the resource hold by the supplemental page table */
 // 보조 페이지 테이블이 보유한 자원을 해제합니다.
 void
@@ -441,7 +434,7 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 
 static void spt_kill_destructor (struct hash_elem *h, void *aux UNUSED) {
 	struct page *page = hash_entry(h, struct page, hash_elem);
-
+	
 	destroy(page);
 	free(page);
 }

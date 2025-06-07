@@ -89,7 +89,7 @@ do_mmap (void *addr, size_t length, int writable,
 		
 		if (!vm_alloc_page_with_initializer (VM_FILE, addr,
 					writable, lazy_load_segment, aux))
-			return false;
+			return NULL;
 
 		read_bytes -= page_read_bytes;
 		zero_bytes -= page_zero_bytes;

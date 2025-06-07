@@ -10,7 +10,7 @@ struct page;
 enum vm_type;
 
 struct anon_page {
-    int swap_slot_idx;
+    disk_sector_t swap_slot_idx;
 };
 
 struct swap_table {

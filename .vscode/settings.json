@@ -73,6 +73,9 @@
         "typeinfo": "c",
         "vaddr.h": "c",
         "vm.h": "c",
-        "inspect.h": "c"
+        "inspect.h": "c",
+        "anon.h": "c",
+        "bitmap.h": "c",
+        "debug.h": "c"
     }
 }

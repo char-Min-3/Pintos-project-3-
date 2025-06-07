@@ -143,8 +143,7 @@ check_user_buffer(const void *uaddr, size_t size) {
 			sys_exit(-1);
 			
 		// || pml4_get_page(thread_current()->pml4, start) == NULL
-			
-
+		
 		// 다음 페이지 경계로 이동
 		start = pg_round_down(start) + PGSIZE;
 	}
@@ -357,6 +356,7 @@ sys_exec (const char *cmd_line){
 
 	return thread_current()->tid;
 }
+
 struct file *find_file_fd(int fd) {
 	struct thread *cur = thread_current();
 	if (fd < 0 || fd >= 64) {
@@ -364,6 +364,7 @@ struct file *find_file_fd(int fd) {
 	}
 	return cur->fd_table[fd];
 }
+
 void *sys_mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
 
     struct file *file;
