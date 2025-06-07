@@ -2,7 +2,6 @@
 
 #include "vm/vm.h"
 #include "vm/anon.h"
-#include "vm/anon.h"
 
 /* DO NOT MODIFY BELOW LINE */
 static struct disk *swap_disk;
@@ -28,12 +27,6 @@ static const struct page_operations anon_ops = {
 void
 vm_anon_init (void) {
 	/* TODO: Set up the swap_disk. */
-	swap_disk = disk_get(1, 1);
-	disk_sector_t sector_cnt = disk_size(swap_disk); // 스왑 디스크의 섹터 개수
-	size_t swap_slot_cnt = sector_cnt / SECTOR_PER_SLOT; // 총 스왑 슬롯 개수
-
-	swap_table.swap_bitmap = bitmap_create(swap_slot_cnt);
-	lock_init(&swap_table.swap_lock);
 	swap_disk = disk_get(1, 1);
 	disk_sector_t sector_cnt = disk_size(swap_disk); // 스왑 디스크의 섹터 개수
 	size_t swap_slot_cnt = sector_cnt / SECTOR_PER_SLOT; // 총 스왑 슬롯 개수
@@ -78,23 +71,6 @@ anon_swap_in (struct page *page, void *kva) {
 	lock_release(&swap_table.swap_lock);
 
 	return true;
-	int slot_idx = anon_page->swap_slot_idx;
-	int sector_start = (slot_idx)*SECTOR_PER_SLOT;
-	
-	lock_acquire(&swap_table.swap_lock);
-    
-	for(int i =0; i<SECTOR_PER_SLOT; i++ ){
-		disk_read(swap_disk, sector_start + i, (uint8_t *)kva + DISK_SECTOR_SIZE*i);
-	}
-	/*비트맵 0으로 만들기.*/
-	
-	bitmap_reset(swap_table.swap_bitmap,slot_idx);
-	
-	anon_page->swap_slot_idx = NULL;
-
-	lock_release(&swap_table.swap_lock);
-
-	return true;
 }
 
 /* Swap out the page by writing contents to the swap disk. */
@@ -124,23 +100,6 @@ anon_swap_out (struct page *page) {
 	lock_release(&swap_table.swap_lock);
 	
 	return true;
-	void *kva = page->frame->kva;
-	lock_acquire(&swap_table.swap_lock);
-	size_t slot_idx = bitmap_scan(swap_table.swap_bitmap, 0, SECTOR_PER_SLOT, false);
-
-	anon_page->swap_slot_idx = slot_idx;
-
-	bitmap_flip(swap_table.swap_bitmap, slot_idx);
-
-	
-	/* slot 번호를 섹터 오프셋으로 변환 */
-    size_t sector_offset = slot_idx * SECTOR_PER_SLOT;
-
-  	/* 512바이트씩 나눠서 기록 */
-    for (size_t i = 0; i < SECTOR_PER_SLOT; i++) {
-        disk_write (swap_disk, sector_offset + i, kva + i * DISK_SECTOR_SIZE);
-    }
-	lock_release(&swap_table.swap_lock);
 }
 
 /* Destroy the anonymous page. PAGE will be freed by the caller. */
