@@ -381,7 +381,12 @@ void *sys_mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
     	if (file == NULL)
         	return NULL;
 	}
-    return do_mmap(addr, length, writable, file, offset);
+	struct file *files = file_reopen(file); 
+   
+    if(files == NULL) return;
+    
+
+    return do_mmap(addr, length, writable, files, offset);
 }
 
 
@@ -389,5 +394,8 @@ void *sys_mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
 void sys_munmap(void *addr){
 	// 주소 유효성 검사
 	check_user(addr);
+
+    //뭘 더 검사해야지?
+
 	do_munmap(addr);
 }

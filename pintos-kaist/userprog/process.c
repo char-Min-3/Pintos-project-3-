@@ -368,13 +368,12 @@ process_exit (void) {
     	if (cur->fd_table[fd] != NULL)
         	file_close(cur->fd_table[fd]);
 	}
-
+    
 	while (!list_empty (&cur->child_list)) {
 		struct list_elem *e = list_pop_front (&cur->child_list);
 		struct child_info *c = list_entry (e, struct child_info, elem);
 		palloc_free_page (c);
 	}
-
 	process_cleanup ();
 }
 
