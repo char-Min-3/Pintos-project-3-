@@ -270,7 +270,13 @@ sys_halt (void){
 int
 sys_write(int fd, const void *buffer, unsigned size){
 	check_user_buffer(buffer, size); // 유저 버퍼 체크
+
 	struct thread *cur = thread_current ();
+
+    struct page *page = spt_find_page(&thread_current()->spt, buffer);
+
+    if (page != NULL && !page->writable)
+        sys_exit(-1);
 
 	if(fd == 1){
 		lock_acquire(&file_lock);
@@ -293,6 +299,11 @@ sys_write(int fd, const void *buffer, unsigned size){
 int sys_read(int fd, void *buffer, unsigned size){
 	check_user_buffer(buffer, size); // 유저 버퍼 체크
 	struct thread *cur = thread_current ();
+
+	struct page *page = spt_find_page(&thread_current()->spt, buffer);
+	
+    if (page != NULL && !page->writable)
+        sys_exit(-1);
 
 	if(fd == 0){
 		lock_acquire(&file_lock);
@@ -358,11 +369,11 @@ void *sys_mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
     struct file *file;
     //시스템 입출력 전용이니 일단 빼두었음.
     if (fd == 0 || fd == 1)
-        sys_exit(-1);
-
+        return NULL;
     //주소 유효성 검사
-    check_user(addr);
-
+  if (addr == NULL || is_kernel_vaddr(addr) || addr >= USER_STACK ){
+		return NULL;
+	}
     // 정확히 1 페이지 단위로 들어오는 체크
     if (offset % PGSIZE != 0) {
         return NULL;
@@ -373,8 +384,9 @@ void *sys_mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
 
 
     if(length <= 0 || addr == NULL){
-		return 0;
+		return NULL;
 	}
+
 
     if(check_fd_table(fd)){
     	file = find_file_fd(fd);
