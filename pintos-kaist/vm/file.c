@@ -1,5 +1,3 @@
-
-
 #include "vm/vm.h"
 #include "threads/vaddr.h"
 #include "userprog/process.h"
@@ -70,12 +68,12 @@ file_backed_destroy (struct page *page) {
 void *
 do_mmap (void *addr, size_t length, int writable,
 		struct file *file, off_t offset) {
-    struct file *files = file_reopen(file);
+
     //얼마나 읽고 0으로 채울지 추측
     //load segment 와 유사한 동작
 	void * file_addr = addr;
 
-    size_t read_bytes = length > file_length(files) ? file_length(files) : length;
+    size_t read_bytes = length > file_length(file) ? file_length(file) : length;
     size_t zero_bytes = PGSIZE - read_bytes % PGSIZE;
 		
 	while (read_bytes > 0 || zero_bytes > 0) {
@@ -85,7 +83,7 @@ do_mmap (void *addr, size_t length, int writable,
 
 		struct file_info *aux = malloc(sizeof(struct file_info));
 		if (aux == NULL) return false;	
-		aux->file = files;
+		aux->file = file;
 		aux->page_read = page_read_bytes;
 		aux->page_zero = page_zero_bytes;
 		aux->offset = offset;

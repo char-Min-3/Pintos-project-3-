@@ -274,8 +274,8 @@ sys_write(int fd, const void *buffer, unsigned size){
 
     struct page *page = spt_find_page(&thread_current()->spt, buffer);
 
-    if (page != NULL && !page->writable)
-        sys_exit(-1);
+    // if (page != NULL && !page->writable)
+    //     sys_exit(-1);
 
 	if(fd == 1){
 		lock_acquire(&file_lock);
@@ -372,28 +372,33 @@ void *sys_mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
     if (fd == 0 || fd == 1)
         return NULL;
     //주소 유효성 검사
-  if (addr == NULL || is_kernel_vaddr(addr) || addr >= USER_STACK ){
+  	if (addr == NULL || is_kernel_vaddr(addr) || addr >= KERN_BASE - 0x2000){
 		return NULL;
 	}
     // 정확히 1 페이지 단위로 들어오는 체크
-    if (offset % PGSIZE != 0) {
+    if (pg_round_down(offset) != offset) {
         return NULL;
 	}
     if (pg_round_down(addr) != addr){
         return NULL;
     }
 
-
-    if(length <= 0 || addr == NULL){
-		return NULL;
-	}
-
-
     if(check_fd_table(fd)){
     	file = find_file_fd(fd);
     	if (file == NULL)
         	return NULL;
 	}
+
+	lock_acquire(&file_lock);
+	off_t len = file_length(file);
+	lock_release(&file_lock);
+	if (len == 0) return NULL;
+
+	
+    if(length <= 0 || addr == NULL){
+		return NULL;
+	}
+
 	struct file *files = file_reopen(file); 
    
     if(files == NULL) return;
