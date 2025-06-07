@@ -6,7 +6,6 @@
 /* DO NOT MODIFY BELOW LINE */
 static struct disk *swap_disk;
 static struct swap_table swap_table;
-static struct swap_table swap_table;
 static bool anon_swap_in (struct page *page, void *kva);
 static bool anon_swap_out (struct page *page);
 static void anon_destroy (struct page *page);
@@ -98,6 +97,10 @@ anon_swap_out (struct page *page) {
         disk_write (swap_disk, sector_offset + i, (uint8_t *)kva + i * DISK_SECTOR_SIZE);
     }
 	lock_release(&swap_table.swap_lock);
+
+	lock_acquire(&frame_table.ft_lock);
+	hash_delete(&frame_table.ft, &page->frame->hash_elem);
+	lock_release(&frame_table.ft_lock);
 	
 	return true;
 }

@@ -9,7 +9,7 @@
 #include "vm/inspect.h"
 #include "include/threads/vaddr.h"
 #include "string.h"
-struct frame_table frame_table;
+
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
@@ -95,7 +95,6 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 	   //writable 나중에봐 (2025-06-03 11:31 AM)
 
 	   if(!spt_insert_page(spt, _pages)){
-		    printf("spt_insert_page failed: va=%p\n", upage);
 			free(_pages);
 			goto err;
 	   }
@@ -133,14 +132,30 @@ spt_insert_page (struct supplemental_page_table *spt UNUSED,
 	// TODO: 이 함수를 구현하세요.
 
 	int succ = false;
-
+	lock_acquire(&spt->spt_lock);
 	struct hash_elem *elem = hash_insert(&spt->spt_hash, &page->hash_elem);
-
+	lock_release(&spt->spt_lock);
 	if (elem == NULL)
 		succ = true;
 	
 	return succ;
 }
+
+bool
+spt_delete_page (struct supplemental_page_table *spt UNUSED,
+		struct page *page UNUSED) {
+
+
+	int succ = false;
+	lock_acquire(&spt->spt_lock);
+	struct hash_elem *elem = hash_delete(&spt->spt_hash, &page->hash_elem);
+	lock_release(&spt->spt_lock);
+	if (elem == NULL)
+		succ = true;
+	
+	return succ;
+}
+
 
 
 /* Get the struct frame, that will be evicted. */
@@ -385,7 +400,7 @@ frame_less (const struct hash_elem *a_, const struct hash_elem *b_, void *aux UN
 void
 supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
 	hash_init(&spt->spt_hash, page_hash, page_less, NULL);
-	// lock_init(&spt->spt_lock);
+	lock_init(&spt->spt_lock);
 }
 
 
@@ -416,6 +431,24 @@ supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 			struct page *dst_page = spt_find_page(dst, src_page->va);
 			memcpy(dst_page->frame->kva, src_page->frame->kva, PGSIZE);
 		}
+
+		else if(page_get_type(src_page) == VM_FILE){
+			struct file_page *file_page = &src_page->file;
+			struct file_info *aux = malloc(sizeof(struct file_info));
+
+			aux->file = file_page->file;
+			aux->offset = file_page->offset;
+			aux->page_read = file_page->page_read;
+			aux->page_zero = file_page->page_zero;
+
+			if(!vm_alloc_page_with_initializer(VM_FILE, src_page->va, src_page->writable, file_backed_initializer,aux))
+				return false;
+			if(src_page->frame == NULL) continue;
+			if(!vm_claim_page(src_page->va)) return false;
+			
+			struct page *dst_page = spt_find_page(dst, src_page->va);
+			memcpy(dst_page->frame->kva, src_page->frame->kva, PGSIZE);
+		}
 	}
 	return true;
 }
@@ -436,5 +469,6 @@ static void spt_kill_destructor (struct hash_elem *h, void *aux UNUSED) {
 	struct page *page = hash_entry(h, struct page, hash_elem);
 	
 	destroy(page);
+	spt_delete_page(&thread_current()->spt,page);
 	free(page);
 }

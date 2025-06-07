@@ -36,6 +36,7 @@ enum vm_type {
 struct page_operations;
 struct thread;
 struct frame;
+struct frame_table frame_table;
 
 #define VM_TYPE(type) ((type) & 7)
 
@@ -92,7 +93,7 @@ struct page_operations {
  * 이 구조체는 자유롭게 설계 가능 */
 struct supplemental_page_table {
 	struct hash spt_hash;		/*spt hash 테이블 */
-	// struct lock spt_lock;		/*spt lock (임계 구역 관리)*/
+	struct lock spt_lock;		/*spt lock (임계 구역 관리)*/
 };
 
 struct frame_table{
