@@ -5,6 +5,7 @@
 #include "threads/synch.h"
 #include "lib/kernel/hash.h"
 
+
 enum vm_type {
 	/* 초기화되지 않은 페이지 */
 	VM_UNINIT = 0,

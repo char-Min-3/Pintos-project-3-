@@ -6,9 +6,12 @@
 /* DO NOT MODIFY BELOW LINE */
 static struct disk *swap_disk;
 static struct swap_table swap_table;
+static struct swap_table swap_table;
 static bool anon_swap_in (struct page *page, void *kva);
 static bool anon_swap_out (struct page *page);
 static void anon_destroy (struct page *page);
+
+#define SECTOR_PER_SLOT (PGSIZE / DISK_SECTOR_SIZE) // 총 스왑 슬롯 개수
 
 #define SECTOR_PER_SLOT (PGSIZE / DISK_SECTOR_SIZE) // 총 스왑 슬롯 개수
 
