@@ -242,8 +242,7 @@ process_exec (void *f_name) {
 	bool success;
 
 	if(f_name == NULL) return -1;
-	
-	supplemental_page_table_init (&thread_current()->spt);
+
 	char *fn_copy = palloc_get_page(PAL_ZERO); 
 	if (fn_copy == NULL) return -1;
 
@@ -278,9 +277,8 @@ process_exec (void *f_name) {
 
 	/* And then load the binary */
 	success = load (file_name, &_if);
-	
-	/* If load failed, quit. */
 
+	/* If load failed, quit. */
 
 	if (!success){
 		palloc_free_page (fn_copy);
@@ -365,8 +363,10 @@ process_exit (void) {
 
 
 	for (int fd = 2; fd < FD_MAX; fd++) {
-    	if (cur->fd_table[fd] != NULL)
-        	file_close(cur->fd_table[fd]);
+    	if (cur->fd_table[fd] != NULL){
+			file_close(cur->fd_table[fd]);
+		}
+        	
 	}
     
 	while (!list_empty (&cur->child_list)) {
@@ -494,16 +494,17 @@ load (const char *file_name, struct intr_frame *if_) {
 	process_activate (thread_current ());
 
 	/* Open executable file. */
+	
 	file = filesys_open (file_name);
 
-
-	
 	if (file == NULL) {
 		printf ("load: %s: open failed\n", file_name);
 		goto done;
 	}
 
 	file_deny_write(file);
+
+
 	thread_current()->running_file = file;
 
 	/* Read and verify executable header. */
@@ -525,8 +526,9 @@ load (const char *file_name, struct intr_frame *if_) {
 
 		if (file_ofs < 0 || file_ofs > file_length (file))
 			goto done;
-		file_seek (file, file_ofs);
 
+		file_seek (file, file_ofs);
+	
 		if (file_read (file, &phdr, sizeof phdr) != sizeof phdr)
 			goto done;
 		file_ofs += sizeof phdr;
@@ -751,13 +753,14 @@ lazy_load_segment (struct page *page, void *aux) {
 	/* TODO: VA is available when calling this function. */
 	struct file_info *info = (struct file_info *)aux;
 	uint8_t *kpage = page->frame->kva;
-
+	
 	if (file_read_at (info->file, kpage, info->page_read,info->offset) != (int) info->page_read) 
 	{
 		free(info);
 		printf("check\n");
 		return false;
 	}
+
 	// 채우고 남은 공간을 0으로 채운다. 마지막 페이지가 아니면 채울 필요 없음.
 	memset (kpage + info->page_read, 0, info->page_zero);
 	free(info);

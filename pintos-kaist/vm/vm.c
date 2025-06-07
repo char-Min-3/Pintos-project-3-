@@ -285,6 +285,7 @@ vm_handle_wp (struct page *page UNUSED) {
 bool
 vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 		bool user UNUSED, bool write UNUSED, bool not_present UNUSED) {
+			
 	struct supplemental_page_table *spt UNUSED = &thread_current ()->spt;
 	struct page *page = spt_find_page(spt,addr);
 
@@ -304,8 +305,6 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 		}
 		return false;
 	}
-
-
 
 	/* write 접근했는데, 페이지가 writable 하지 않을 경우 */
 	if (write && !page->writable){
