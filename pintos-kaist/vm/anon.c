@@ -78,11 +78,15 @@ anon_swap_out (struct page *page) {
 	lock_acquire(&swap_table.swap_lock);
 	size_t slot_idx = bitmap_scan(swap_table.swap_bitmap, 0, 1, false);
 
-	anon_page->swap_slot_idx = slot_idx;
+	/* 없는 경우 체크 */
+	if(slot_idx == BITMAP_ERROR){
+		lock_release(&swap_table.swap_lock);
+		return false;
+	}
 
 	bitmap_flip(swap_table.swap_bitmap, slot_idx);
+	anon_page->swap_slot_idx = slot_idx;
 
-	
 	/* slot 번호를 섹터 오프셋으로 변환 */
     size_t sector_offset = slot_idx * SECTOR_PER_SLOT;
 
@@ -99,12 +103,15 @@ anon_swap_out (struct page *page) {
 static void
 anon_destroy (struct page *page) {
 	struct anon_page *anon_page = &page->anon;
-	// if(page->frame != NULL){
-	// 	void *kva = page->frame->kva;
-	// 	if (kva != NULL) {
-	// 		palloc_free_page(kva);
-	// 		page->frame->kva = NULL;
-	// 	}
+
+	if (anon_page->swap_slot_idx != -1){
+		lock_acquire(&swap_table.swap_lock);
+        bitmap_reset(swap_table.swap_bitmap, anon_page->swap_slot_idx);
+        lock_release(&swap_table.swap_lock);
+	}
+
+	// if (page->frame){
+	// 	palloc_free_page(page->frame->kva);
 	// 	free(page->frame);
 	// 	page->frame = NULL;
 	// }

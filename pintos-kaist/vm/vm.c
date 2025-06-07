@@ -123,8 +123,6 @@ spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 	return e != NULL ? hash_entry(e, struct page, hash_elem) : NULL;
 }
 
-
-
 /* Insert PAGE into spt with validation. */
 // 검증 후 PAGE를 spt에 삽입합니다.
 bool
@@ -185,7 +183,11 @@ vm_evict_frame (void) {
 	// TODO: victim을 swap out하고 해당 프레임을 반환하세요.
 	if (victim == NULL) return NULL;
 	//희생페이지 쫓겨냄
-	swap_out(victim->page);
+	if(!swap_out(victim->page)){
+		return NULL;
+	}
+
+	pml4_clear_page(thread_current()->pml4, victim->page->va);
 	//page의 frame 연결 끊어준다.
 	victim->page->frame = NULL;
 	//frame의 page도 끊어준다.
@@ -202,14 +204,24 @@ vm_evict_frame (void) {
 // 항상 유효한 주소를 반환합니다. 즉, 사용자 메모리 풀이 가득 차도 프레임을 교체하여 메모리를 확보합니다.
 static struct frame *
 vm_get_frame (void) {
-	struct frame *frame = malloc(sizeof(struct frame));
-	if (frame == NULL)
-		return NULL;
-    
+	struct frame *frame;
 	void *new_kva = palloc_get_page(PAL_USER);
 	if (new_kva == NULL) {
-		free(frame);
-		return NULL;
+		struct frame *victim = vm_evict_frame();
+		if (victim ==NULL){
+			return NULL;
+		}
+		frame = victim;
+		new_kva = frame->kva;
+	}
+	//kva를 할당한 경우
+	else{
+		frame = malloc(sizeof(struct frame));
+		if (frame ==NULL){
+			palloc_free_page(new_kva);
+			return NULL;
+		}
+		frame->kva = new_kva;
 	}
 
 	frame->page = NULL;
@@ -404,15 +416,6 @@ supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 			struct page *dst_page = spt_find_page(dst, src_page->va);
 			memcpy(dst_page->frame->kva, src_page->frame->kva, PGSIZE);
 		}
-		// }else if(page_get_type(src_page) == VM_FILE){
-		// 		if(!vm_alloc_page_with_initializer(VM_FILE, src_page->va, src_page->writable, file_backed_initializer, NULL)) 
-		// 		return false;
-		// 	if(src_page->frame == NULL) continue;
-		// 	if(!vm_claim_page(src_page->va)) return false;
-			
-		// 	struct page *dst_page = spt_find_page(dst, src_page->va);
-		// 	memcpy(dst_page->frame->kva, src_page->frame->kva, PGSIZE);
-		// }
 	}
 	return true;
 }
