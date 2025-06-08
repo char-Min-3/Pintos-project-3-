@@ -18,8 +18,6 @@ static const struct page_operations file_ops = {
 /* The initializer of file vm */
 void
 vm_file_init (void) {
-	lock_init(&frame_table.ft_lock);
-	hash_init(&frame_table.ft,frame_hash,frame_less,NULL);
 }
 
 /* Initialize the file backed page */bool
@@ -41,7 +39,9 @@ file_backed_initializer (struct page *page, enum vm_type type, void *kva) {
 	file_page->page_zero = aux->page_zero;
 
 	
-    page->uninit.aux = NULL;
+    // free(aux);
+	page->uninit.aux = NULL;
+	
 	return true;
 }
 
@@ -58,7 +58,7 @@ file_backed_swap_in (struct page *page, void *kva) {
 	//나머지를 0으로 채워준다. page_zero 만큼.
 	memset(kva+file_page->page_read,0, file_page->page_zero);
 	//페이지 매핑해주기
-	pml4_set_page(thread_current()->pml4, page->va,kva, page->writable);
+	// pml4_set_page(thread_current()->pml4, page->va,kva, page->writable);
 	return true;
 }
 
@@ -66,19 +66,20 @@ file_backed_swap_in (struct page *page, void *kva) {
 static bool
 file_backed_swap_out (struct page *page) {
 	struct file_page *file_page UNUSED = &page->file;
-	void *kva = page->frame->kva;
+	struct frame *frame = page->frame;
 	
+	if(frame == NULL) return false;
 	if(pml4_is_dirty(thread_current()->pml4,page->va)){
-		file_write_at(file_page->file, kva, file_page->page_read, file_page->offset);
+		file_write_at(file_page->file, frame->kva, file_page->page_read, file_page->offset);
 	}
 
 	//pml4에서 페이지 제거함.
 	pml4_clear_page(thread_current()->pml4, page->va);
 	//frame 페이지 제거함.
-	palloc_free_page(kva);
+	// palloc_free_page(frame->kva);
 	//hash에서도 삭제하기
 	lock_acquire(&frame_table.ft_lock);
-	hash_delete(&frame_table.ft, &page->frame->hash_elem);
+	hash_delete(&frame_table.ft, &frame->hash_elem);
 	lock_release(&frame_table.ft_lock);
 	
 	// free(page->frame);
@@ -87,13 +88,15 @@ file_backed_swap_out (struct page *page) {
 
 }
 
+
 /* Destory the file backed page. PAGE will be freed by the caller. */
 static void
 file_backed_destroy (struct page *page) {
 	struct file_page *file_page UNUSED = &page->file;
-	if(pml4_is_dirty(thread_current()->pml4,page->va)){
+	if(page->frame && pml4_is_dirty(thread_current()->pml4,page->va)){
 		file_write_at(file_page->file, page->frame->kva, file_page->page_read, file_page->offset);
 	}
+
 }
 
 /* Do the mmap */
@@ -106,7 +109,8 @@ do_mmap (void *addr, size_t length, int writable,
 	void * file_addr = addr;
 
     size_t read_bytes = length > file_length(file) ? file_length(file) : length;
-    size_t zero_bytes = PGSIZE - read_bytes % PGSIZE;
+    size_t zero_bytes = (PGSIZE - read_bytes % PGSIZE);
+	// size_t zero_bytes = (PGSIZE - (read_bytes % PGSIZE)) % PGSIZE;
 		
 	while (read_bytes > 0 || zero_bytes > 0) {
 
@@ -155,7 +159,25 @@ do_munmap (void *addr) {
 		}
 	
 		pml4_clear_page(thread_current()->pml4, page->va);
-		addr +=PGSIZE;
+		destroy(page);
+
+		if (page->frame != NULL) {
+            struct frame *f = page->frame;	
+			//frmae_table에서 제거
+			lock_acquire(&frame_table.ft_lock);
+        	hash_delete(&frame_table.ft, &page->frame->hash_elem);
+        	lock_release(&frame_table.ft_lock);
+
+			//frame도 제거
+			palloc_free_page(page->frame->kva);
+        	free(page->frame);
+			page->frame = NULL;
+		}
+
+		//spt에서 제거
+		spt_delete_page(&thread_current()->spt, page);
+		free(page);
+		addr += PGSIZE;
 	}
  
 }

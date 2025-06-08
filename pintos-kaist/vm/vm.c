@@ -202,12 +202,7 @@ vm_evict_frame (void) {
 		return NULL;
 	}
 
-	pml4_clear_page(thread_current()->pml4, victim->page->va);
-	//page의 frame 연결 끊어준다.
-	victim->page->frame = NULL;
-	//frame의 page도 끊어준다.
 	victim->page = NULL;
-
 	return victim;
 }
 
@@ -226,27 +221,27 @@ vm_get_frame (void) {
 		if (victim ==NULL){
 			return NULL;
 		}
+		/* 재사용하기 */
 		frame = victim;
 		new_kva = frame->kva;
 	}
 	//kva를 할당한 경우
 	else{
-		frame = malloc(sizeof(struct frame));
+		frame = malloc(sizeof *frame);
 		if (frame ==NULL){
 			palloc_free_page(new_kva);
 			return NULL;
 		}
 		frame->kva = new_kva;
+		lock_acquire(&frame_table.ft_lock);
+		hash_insert(&frame_table.ft,&frame->hash_elem);
+		lock_release(&frame_table.ft_lock);
 	}
 
 	frame->page = NULL;
 	frame->kva = new_kva;
 	/* TODO: Fill this function. */
 	// TODO: 이 함수를 구현하세요.
-
-	lock_acquire(&frame_table.ft_lock);
-	hash_insert(&frame_table.ft,&frame->hash_elem);
-	lock_release(&frame_table.ft_lock);
 
 	ASSERT (frame != NULL);
 	ASSERT (frame->page == NULL);
@@ -356,6 +351,15 @@ vm_do_claim_page (struct page *page) {
     // if (pml4_get_page(thread_current()->pml4, page->va) != NULL){
 
    	if (!pml4_set_page(thread_current()->pml4, page->va, frame->kva, page->writable)){
+		page->frame = NULL;
+		frame->page = NULL;
+
+		lock_acquire(&frame_table.ft_lock);
+		hash_delete(&frame_table.ft, &frame->hash_elem);
+		lock_release(&frame_table.ft_lock);
+
+		palloc_free_page(frame->kva);
+		free(frame);
 		return false;
 	}
 		
@@ -418,7 +422,7 @@ supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 
 		if (page_get_type(src_page) == VM_UNINIT){
 			struct uninit_page *src_un = &src_page->uninit;
-			if(!vm_alloc_page_with_initializer(src_page->uninit.type, src_page->va, src_page->writable, NULL, NULL)) 
+			if(!vm_alloc_page_with_initializer(src_un->type, src_page->va, src_page->writable, src_un->page_initializer, src_un->aux)) 
 				return false;
 		}
 
@@ -435,19 +439,20 @@ supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 		else if(page_get_type(src_page) == VM_FILE){
 			struct file_page *file_page = &src_page->file;
 			struct file_info *aux = malloc(sizeof(struct file_info));
+			if(!aux) return false;
 
 			aux->file = file_page->file;
 			aux->offset = file_page->offset;
 			aux->page_read = file_page->page_read;
 			aux->page_zero = file_page->page_zero;
 
-			if(!vm_alloc_page_with_initializer(VM_FILE, src_page->va, src_page->writable, file_backed_initializer,aux))
+			if(!vm_alloc_page_with_initializer(VM_FILE, src_page->va, src_page->writable, lazy_load_segment,aux))
 				return false;
-			if(src_page->frame == NULL) continue;
-			if(!vm_claim_page(src_page->va)) return false;
-			
-			struct page *dst_page = spt_find_page(dst, src_page->va);
-			memcpy(dst_page->frame->kva, src_page->frame->kva, PGSIZE);
+			if(src_page->frame){
+				if(!vm_claim_page(src_page->va)) return false;
+				struct page *dst_page = spt_find_page(dst, src_page->va);
+				memcpy(dst_page->frame->kva, src_page->frame->kva, PGSIZE);
+			}
 		}
 	}
 	return true;

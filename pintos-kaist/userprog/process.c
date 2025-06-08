@@ -67,6 +67,7 @@ process_create_initd (const char *file_name) {
 	char *token;
 	char *strl;
 	token = strtok_r (file_name, " ", &strl);
+	// token = strtok_r (fn_copy, " ", &strl);
 
 	/* Create a new thread to execute FILE_NAME. */
 	tid = thread_create (token, PRI_DEFAULT, initd, fn_copy);
@@ -755,7 +756,7 @@ lazy_load_segment (struct page *page, void *aux) {
 	if (file_read_at (info->file, kpage, info->page_read,info->offset) != (int) info->page_read) 
 	{
 		free(info);
-		printf("check\n");
+		// printf("check\n");
 		return false;
 	}
 	// 채우고 남은 공간을 0으로 채운다. 마지막 페이지가 아니면 채울 필요 없음.

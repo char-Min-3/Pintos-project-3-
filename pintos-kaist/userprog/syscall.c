@@ -266,6 +266,7 @@ sys_halt (void){
 	power_off();
 }
 
+
 int
 sys_write(int fd, const void *buffer, unsigned size){
 	check_user_buffer(buffer, size); // 유저 버퍼 체크
@@ -274,8 +275,8 @@ sys_write(int fd, const void *buffer, unsigned size){
 
     struct page *page = spt_find_page(&thread_current()->spt, buffer);
 
-    // if (page != NULL && !page->writable)
-    //     sys_exit(-1);
+    if (page != NULL && !page->writable)
+        sys_exit(-1);
 
 	if(fd == 1){
 		lock_acquire(&file_lock);
@@ -401,7 +402,7 @@ void *sys_mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
 
 	struct file *files = file_reopen(file); 
    
-    if(files == NULL) return;
+    if(files == NULL) return NULL;
     
 
     return do_mmap(addr, length, writable, files, offset);

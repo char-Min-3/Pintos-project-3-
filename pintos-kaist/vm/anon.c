@@ -2,6 +2,7 @@
 
 #include "vm/vm.h"
 #include "vm/anon.h"
+#include "threads/mmu.h"
 
 /* DO NOT MODIFY BELOW LINE */
 static struct disk *swap_disk;
@@ -77,6 +78,9 @@ static bool
 anon_swap_out (struct page *page) {
 	struct anon_page *anon_page = &page->anon;
 	void *kva = page->frame->kva;
+	struct frame *frame = page->frame;
+
+	if(frame == NULL) return false;
 	lock_acquire(&swap_table.swap_lock);
 	size_t slot_idx = bitmap_scan(swap_table.swap_bitmap, 0, 1, false);
 
@@ -97,11 +101,15 @@ anon_swap_out (struct page *page) {
         disk_write (swap_disk, sector_offset + i, (uint8_t *)kva + i * DISK_SECTOR_SIZE);
     }
 	lock_release(&swap_table.swap_lock);
+	pml4_clear_page(thread_current()->pml4, page->va);
 
 	lock_acquire(&frame_table.ft_lock);
-	hash_delete(&frame_table.ft, &page->frame->hash_elem);
+	hash_delete(&frame_table.ft, &frame->hash_elem);
 	lock_release(&frame_table.ft_lock);
 	
+
+    page->frame = NULL;
+
 	return true;
 }
 
