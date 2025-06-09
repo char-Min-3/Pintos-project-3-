@@ -468,7 +468,7 @@ struct ELF64_PHDR {
 #define ELF ELF64_hdr
 #define Phdr ELF64_PHDR
 
-static bool setup_stack (struct intr_frame *if_);
+
 static bool validate_segment (const struct Phdr *, struct file *);
 static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		uint32_t read_bytes, uint32_t zero_bytes,
@@ -494,8 +494,10 @@ load (const char *file_name, struct intr_frame *if_) {
 	process_activate (thread_current ());
 
 	/* Open executable file. */
-	
+	// lock_acquire(&file_lock);
 	file = filesys_open (file_name);
+	// lock_release(&file_lock);
+	
 
 	if (file == NULL) {
 		printf ("load: %s: open failed\n", file_name);
@@ -528,6 +530,7 @@ load (const char *file_name, struct intr_frame *if_) {
 			goto done;
 
 		file_seek (file, file_ofs);
+		
 	
 		if (file_read (file, &phdr, sizeof phdr) != sizeof phdr)
 			goto done;
@@ -757,7 +760,6 @@ lazy_load_segment (struct page *page, void *aux) {
 	if (file_read_at (info->file, kpage, info->page_read,info->offset) != (int) info->page_read) 
 	{
 		free(info);
-		printf("check\n");
 		return false;
 	}
 
@@ -827,7 +829,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 }
 
 /* Create a PAGE of stack at the USER_STACK. Return true on success. */
-static bool
+bool
 setup_stack (struct intr_frame *if_) {
 	bool success = false;
 	void *stack_bottom = (void *) (((uint8_t *) USER_STACK) - PGSIZE);

@@ -2,7 +2,8 @@
 
 #include "vm/vm.h"
 #include "vm/anon.h"
-
+#include <stdlib.h>
+#include "lib/kernel/bitmap.h"
 /* DO NOT MODIFY BELOW LINE */
 static struct disk *swap_disk;
 static struct swap_table swap_table;

@@ -1,6 +1,7 @@
 #include "vm/vm.h"
 #include "threads/vaddr.h"
 #include "userprog/process.h"
+#include <stdlib.h>
 
 
 static bool file_backed_swap_in (struct page *page, void *kva);

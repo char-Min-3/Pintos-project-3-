@@ -76,6 +76,7 @@
         "inspect.h": "c",
         "anon.h": "c",
         "bitmap.h": "c",
-        "debug.h": "c"
+        "debug.h": "c",
+        "stdlib.h": "c"
     }
 }

@@ -3,12 +3,16 @@
 #include "userprog/process.h"
 #include "threads/malloc.h"
 #include "threads/palloc.h"
-#include "threads/thread.h" 
+#include "threads/thread.h"
+#include "userprog/process.h"
 #include "threads/mmu.h"
 #include "vm/vm.h"
 #include "vm/inspect.h"
 #include "include/threads/vaddr.h"
 #include "string.h"
+#include "vm/anon.h"  
+
+static void spt_kill_destructor(struct hash_elem *h, void *aux UNUSED);
 
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
@@ -61,6 +65,7 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 
 	/* Check wheter the upage is already occupied or not. */
 	// 해당 가상 주소(upage)가 이미 점유되어 있는지 확인합니다.
+	
 	if (spt_find_page (spt, upage) == NULL) {
 
 		struct page *_pages =(struct page*) malloc(sizeof(struct page));
@@ -116,7 +121,9 @@ spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 
 	struct page temp_page;
 	temp_page.va = pg_round_down(va);
+	lock_acquire(&spt->spt_lock);
 	struct hash_elem *e = hash_find(&spt->spt_hash, &temp_page.hash_elem);
+	lock_release(&spt->spt_lock);
 
 
 	return e != NULL ? hash_entry(e, struct page, hash_elem) : NULL;
@@ -407,7 +414,6 @@ bool
 supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 		struct supplemental_page_table *src UNUSED) {
 	// dst가 자식, src가 부모
-	hash_init(dst, page_hash, page_less, NULL);	
 	struct hash_iterator iterator;
 
 	hash_first(&iterator, &src->spt_hash);
@@ -415,9 +421,13 @@ supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 	while(hash_next(&iterator)){
 		struct page *src_page = hash_entry(hash_cur(&iterator), struct page, hash_elem);
 
-		if (page_get_type(src_page) == VM_UNINIT){
+		if(src_page->uninit.type & VM_MARKER_0){
+			setup_stack(&thread_current()->tf);
+		}
+
+		else if (page_get_type(src_page) == VM_UNINIT){
 			struct uninit_page *src_un = &src_page->uninit;
-			if(!vm_alloc_page_with_initializer(src_page->uninit.type, src_page->va, src_page->writable, NULL, NULL)) 
+			if(!vm_alloc_page_with_initializer(src_page->uninit.type, src_page->va, src_page->writable, src_page->uninit.init, src_page->uninit.aux)) 
 				return false;
 		}
 
@@ -440,7 +450,7 @@ supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 			aux->page_read = file_page->page_read;
 			aux->page_zero = file_page->page_zero;
 
-			if(!vm_alloc_page_with_initializer(VM_FILE, src_page->va, src_page->writable, file_backed_initializer,aux))
+			if(!vm_alloc_page_with_initializer(VM_FILE, src_page->va, src_page->writable, file_backed_initializer, aux))
 				return false;
 			if(src_page->frame == NULL) continue;
 			if(!vm_claim_page(src_page->va)) return false;
@@ -460,7 +470,7 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	 * TODO: writeback all the modified contents to the storage. */
 	// TODO: 스레드가 보유한 모든 보조 페이지 테이블을 제거하고,
 	// TODO: 수정된 내용을 스토리지에 기록하세요.
-
+	
 	hash_clear(&spt->spt_hash, spt_kill_destructor);
 }
 
