@@ -4,7 +4,8 @@
 #include "threads/palloc.h"
 #include "threads/synch.h"
 #include "lib/kernel/hash.h"
-
+#include <stdlib.h>
+#include "threads/malloc.h"
 
 enum vm_type {
 	/* 초기화되지 않은 페이지 */
@@ -114,6 +115,7 @@ void supplemental_page_table_kill (struct supplemental_page_table *spt);
 struct page *spt_find_page (struct supplemental_page_table *spt,
 		void *va);
 bool spt_insert_page (struct supplemental_page_table *spt, struct page *page);
+bool spt_delete_page (struct supplemental_page_table *spt, struct page *page);
 void spt_remove_page (struct supplemental_page_table *spt, struct page *page);
 
 void vm_init (void);

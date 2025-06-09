@@ -33,7 +33,6 @@ int sys_wait(tid_t);
 bool sys_remove (const char *);
 void *sys_mmap(void *addr, size_t length, int writable, int fd, off_t offset);
 void sys_munmap(void *addr);
-struct lock file_lock; // file lock
 
 /* System call.
  *
@@ -59,8 +58,6 @@ syscall_init (void) {
 	 * mode stack. Therefore, we masked the FLAG_FL. */
 	write_msr(MSR_SYSCALL_MASK,
 			FLAG_IF | FLAG_TF | FLAG_DF | FLAG_IOPL | FLAG_AC | FLAG_NT);
-
-	lock_init(&file_lock);
 }
 
 /* The main system call interface */
